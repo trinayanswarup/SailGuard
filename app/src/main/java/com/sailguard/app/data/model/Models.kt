@@ -6,10 +6,11 @@ data class SailyPlan(
     val id: String,
     val country: String,
     val countryCode: String,
-    val dataGB: Double,
-    val validDays: Int,
-    val priceUSD: Double,
-    val network: String = "4G/LTE"
+    val dataGB: Double,       // Double.MAX_VALUE for unlimited
+    val validDays: Int,       // base validity; unlimited plans default to 15
+    val priceUSD: Double,     // for unlimited = 15-day base price
+    val network: String = "4G/LTE",
+    val isUnlimited: Boolean = false
 )
 
 enum class UsageStyle(
@@ -30,16 +31,6 @@ data class TripConfig(
     val usageStyle: UsageStyle,
     val selectedPlan: SailyPlan,
     val startTimestamp: Long = System.currentTimeMillis()
-)
-
-// ── Trip History ─────────────────────────────────────────────────────────────
-
-data class TripRecord(
-    val destination:  String,
-    val durationDays: Int,
-    val planGb:       Double,
-    val actualGb:     Double,
-    val planWasEnough: Boolean
 )
 
 // ── Alerts ────────────────────────────────────────────────────────────────────

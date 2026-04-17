@@ -6,20 +6,19 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 
 data class UsageSliders(
-    val videoStreaming: Float = 0f,  // 0-1 → 0-4 hrs/day  @ 0.70 GB/hr
-    val maps:          Float = 0f,  // 0-1 → 0-4 hrs/day  @ 0.02 GB/hr
-    val videoCalls:    Float = 0f,  // 0-1 → 0-2 hrs/day  @ 0.30 GB/hr
-    val socialMedia:   Float = 0f,  // 0-1 → 0-4 hrs/day  @ 0.10 GB/hr
-    val hotspot:       Float = 0f   // 0-1 → 0-4 hrs/day  @ 0.50 GB/hr
+    val videoStreaming: Float = 0f,  // 0-1 → 0-4 hrs/day  @ 933 MB/hr
+    val maps:          Float = 0f,  // 0-1 → 0-4 hrs/day  @ 10 MB/hr
+    val videoCalls:    Float = 0f,  // 0-1 → 0-2 hrs/day  @ 933 MB/hr
+    val socialMedia:   Float = 0f,  // 0-1 → 0-4 hrs/day  @ 140 MB/hr
+    val hotspot:       Float = 0f   // 0-1 → 0-4 hrs/day  @ 500 MB/hr
 ) {
     val dailyGb: Double get() =
-        videoStreaming * 4 * 0.70 +
-        maps          * 4 * 0.02 +
-        videoCalls    * 2 * 0.30 +
-        socialMedia   * 4 * 0.10 +
-        hotspot       * 4 * 0.50
+        videoStreaming * 4 * 0.933 +
+        maps          * 4 * 0.010 +
+        videoCalls    * 2 * 0.933 +
+        socialMedia   * 4 * 0.140 +
+        hotspot       * 4 * 0.500
 
-    /** Hours per day for each activity label. */
     fun videoStreamingHrs() = videoStreaming * 4f
     fun mapsHrs()           = maps          * 4f
     fun videoCallsHrs()     = videoCalls    * 2f

@@ -1,8 +1,11 @@
 package com.sailguard.app.ui.screens
 
 import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
+import androidx.compose.animation.shrinkVertically
 import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.animation.togetherWith
@@ -32,6 +35,7 @@ import androidx.compose.material.icons.filled.ExpandMore
 import androidx.compose.material.icons.filled.Movie
 import androidx.compose.material.icons.filled.MyLocation
 import androidx.compose.material.icons.filled.Remove
+import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Share
 import androidx.compose.material.icons.filled.VideoCameraFront
 import androidx.compose.material.icons.filled.Wifi
@@ -39,14 +43,9 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.DropdownMenuItem
-import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.ExposedDropdownMenuBox
-import androidx.compose.material3.ExposedDropdownMenuDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.MenuAnchorType
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
@@ -62,7 +61,6 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -70,9 +68,10 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.sailguard.app.data.model.SailyPlan
+import com.sailguard.app.data.model.TripHistoryEntity
 import com.sailguard.app.data.model.UsageStyle
 import com.sailguard.app.data.repository.PlanRepository
-import com.sailguard.app.data.repository.TripHistoryRepository
+import com.sailguard.app.data.repository.Region
 import com.sailguard.app.ui.theme.AppBackground
 import com.sailguard.app.ui.theme.AppSurface
 import com.sailguard.app.ui.theme.AppSurface2
@@ -83,21 +82,21 @@ import com.sailguard.app.ui.theme.TealPrimary
 import com.sailguard.app.ui.theme.TextPrimary
 import com.sailguard.app.ui.theme.TextSecondary
 import com.sailguard.app.ui.theme.WarningAmber
+import com.sailguard.app.viewmodel.HistoryViewModel
 import com.sailguard.app.viewmodel.TripViewModel
 import com.sailguard.app.viewmodel.UsageSliders
 import com.sailguard.app.viewmodel.UsageViewModel
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun TripSetupScreen(
-    vm:           TripViewModel,
-    usageVm:      UsageViewModel,
+    vm:            TripViewModel,
+    usageVm:       UsageViewModel,
+    historyVm:     HistoryViewModel,
     onTripStarted: () -> Unit
 ) {
     val state   by vm.state.collectAsState()
     val sliders by usageVm.sliders.collectAsState()
 
-    // Persists across recompositions but resets when the screen is recreated
     var step by rememberSaveable { mutableStateOf(1) }
 
     val canAdvance = when (step) {
@@ -110,7 +109,6 @@ fun TripSetupScreen(
             .fillMaxSize()
             .background(AppBackground)
     ) {
-        // ── Step indicator ────────────────────────────────────────────────────
         WizardStepBar(
             currentStep = step,
             modifier    = Modifier
@@ -118,7 +116,6 @@ fun TripSetupScreen(
                 .padding(horizontal = 24.dp, vertical = 20.dp)
         )
 
-        // ── Animated step content ─────────────────────────────────────────────
         AnimatedContent(
             targetState = step,
             transitionSpec = {
@@ -136,11 +133,10 @@ fun TripSetupScreen(
             when (targetStep) {
                 1    -> Step1Content(state, vm)
                 2    -> Step2Content(sliders, usageVm, state.durationDays)
-                else -> Step3Content(state, sliders, vm)
+                else -> Step3Content(state, sliders, vm, historyVm)
             }
         }
 
-        // ── Navigation buttons ────────────────────────────────────────────────
         Surface(
             color           = AppSurface,
             shadowElevation = 8.dp,
@@ -156,14 +152,11 @@ fun TripSetupScreen(
                 if (step > 1) {
                     OutlinedButton(
                         onClick  = { step-- },
-                        modifier = Modifier
-                            .weight(1f)
-                            .height(48.dp),
+                        modifier = Modifier.weight(1f).height(48.dp),
                         shape    = RoundedCornerShape(12.dp),
                         border   = BorderStroke(1.dp, CardBorder)
                     ) {
-                        Text("← Back", color = TextPrimary,
-                             fontWeight = FontWeight.Medium)
+                        Text("← Back", color = TextPrimary, fontWeight = FontWeight.Medium)
                     }
                 }
                 Button(
@@ -172,9 +165,7 @@ fun TripSetupScreen(
                         else { vm.startTrip(); onTripStarted() }
                     },
                     enabled  = canAdvance,
-                    modifier = Modifier
-                        .weight(if (step > 1) 2f else 1f)
-                        .height(48.dp),
+                    modifier = Modifier.weight(if (step > 1) 2f else 1f).height(48.dp),
                     shape    = RoundedCornerShape(12.dp),
                     colors   = ButtonDefaults.buttonColors(
                         containerColor         = TealPrimary,
@@ -196,21 +187,11 @@ fun TripSetupScreen(
 // Step 1 — Destination, Duration, Usage Style
 // ─────────────────────────────────────────────────────────────────────────────
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun Step1Content(
     state: com.sailguard.app.viewmodel.TripSetupState,
-    vm: TripViewModel
+    vm:    TripViewModel
 ) {
-    val countries = PlanRepository.countries.map { it.name }
-    var queryText        by remember { mutableStateOf("") }
-    var dropdownExpanded by remember { mutableStateOf(false) }
-
-    val filteredCountries = remember(queryText) {
-        if (queryText.isEmpty()) countries
-        else countries.filter { it.contains(queryText, ignoreCase = true) }
-    }
-
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -218,77 +199,29 @@ private fun Step1Content(
             .padding(horizontal = 20.dp, vertical = 8.dp),
         verticalArrangement = Arrangement.spacedBy(20.dp)
     ) {
-        // Header
         Column {
             Text("⛵ SailGuard",
-                 style      = MaterialTheme.typography.titleSmall,
-                 color      = TealPrimary,
-                 fontWeight = FontWeight.Bold,
+                 style         = MaterialTheme.typography.titleSmall,
+                 color         = TealPrimary,
+                 fontWeight    = FontWeight.Bold,
                  letterSpacing = 1.sp)
             Spacer(Modifier.height(4.dp))
             Text("Where are you headed?",
-                 style = MaterialTheme.typography.headlineSmall,
-                 color = TextPrimary)
+                 style = MaterialTheme.typography.headlineSmall, color = TextPrimary)
             Text("Select your destination, trip length, and usage style.",
-                 style = MaterialTheme.typography.bodyMedium,
-                 color = TextSecondary)
+                 style = MaterialTheme.typography.bodyMedium,    color = TextSecondary)
         }
 
-        // Destination
+        // ── New destination picker ────────────────────────────────────────────
         Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
             SectionLabel("Destination")
-            ExposedDropdownMenuBox(
-                expanded         = dropdownExpanded,
-                onExpandedChange = { dropdownExpanded = it }
-            ) {
-                OutlinedTextField(
-                    value         = if (state.destination.isNotEmpty() && queryText == state.destination)
-                                        "${state.flag}  ${state.destination}"
-                                    else queryText,
-                    onValueChange = { queryText = it; dropdownExpanded = true },
-                    placeholder   = { Text("Search destination…", color = TextSecondary) },
-                    trailingIcon  = { ExposedDropdownMenuDefaults.TrailingIcon(dropdownExpanded) },
-                    modifier      = Modifier
-                        .menuAnchor(MenuAnchorType.PrimaryEditable, true)
-                        .fillMaxWidth(),
-                    singleLine    = true,
-                    colors        = OutlinedTextFieldDefaults.colors(
-                        focusedTextColor        = TextPrimary,
-                        unfocusedTextColor      = TextPrimary,
-                        focusedBorderColor      = TealPrimary,
-                        unfocusedBorderColor    = CardBorder,
-                        focusedContainerColor   = AppSurface,
-                        unfocusedContainerColor = AppSurface
-                    )
-                )
-                ExposedDropdownMenu(
-                    expanded         = dropdownExpanded && filteredCountries.isNotEmpty(),
-                    onDismissRequest = { dropdownExpanded = false },
-                    modifier         = Modifier.background(AppSurface)
-                ) {
-                    filteredCountries.forEach { country ->
-                        val flag = PlanRepository.flagForCountry(country)
-                        DropdownMenuItem(
-                            text = {
-                                Row(verticalAlignment = Alignment.CenterVertically) {
-                                    Text(flag, fontSize = 20.sp)
-                                    Spacer(Modifier.width(10.dp))
-                                    Text(country, color = TextPrimary,
-                                         style = MaterialTheme.typography.bodyMedium)
-                                }
-                            },
-                            onClick = {
-                                vm.setDestination(country)
-                                queryText        = country
-                                dropdownExpanded = false
-                            }
-                        )
-                    }
-                }
-            }
+            DestinationPicker(
+                selectedDestination = state.destination,
+                onSelect            = { vm.setDestination(it) }
+            )
         }
 
-        // Duration
+        // ── Duration ──────────────────────────────────────────────────────────
         Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
             SectionLabel("Trip Duration")
             Card(
@@ -297,9 +230,7 @@ private fun Step1Content(
                 border = BorderStroke(1.dp, CardBorder)
             ) {
                 Row(
-                    modifier              = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 16.dp, vertical = 12.dp),
+                    modifier              = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 12.dp),
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment     = Alignment.CenterVertically
                 ) {
@@ -314,8 +245,7 @@ private fun Step1Content(
                              style      = MaterialTheme.typography.displaySmall,
                              color      = TextPrimary,
                              fontWeight = FontWeight.Bold)
-                        Text("days", style = MaterialTheme.typography.bodySmall,
-                             color = TextSecondary)
+                        Text("days", style = MaterialTheme.typography.bodySmall, color = TextSecondary)
                     }
                     IconButton(
                         onClick  = { if (state.durationDays < 60) vm.setDuration(state.durationDays + 1) },
@@ -327,16 +257,14 @@ private fun Step1Content(
             }
         }
 
-        // Usage Style
+        // ── Usage Style ───────────────────────────────────────────────────────
         Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
             SectionLabel("Usage Style")
             Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                 UsageStyle.entries.forEach { style ->
                     val selected = state.usageStyle == style
                     Surface(
-                        modifier = Modifier
-                            .weight(1f)
-                            .clickable { vm.setUsageStyle(style) },
+                        modifier = Modifier.weight(1f).clickable { vm.setUsageStyle(style) },
                         shape    = RoundedCornerShape(12.dp),
                         color    = if (selected) TealPrimary else AppSurface,
                         border   = if (selected) null else BorderStroke(1.dp, CardBorder)
@@ -358,13 +286,198 @@ private fun Step1Content(
                 }
             }
         }
-
         Spacer(Modifier.height(8.dp))
     }
 }
 
+// ── Destination Picker ────────────────────────────────────────────────────────
+
+@Composable
+private fun DestinationPicker(
+    selectedDestination: String,
+    onSelect: (String) -> Unit
+) {
+    var searchText     by remember { mutableStateOf(if (selectedDestination.isNotEmpty()) selectedDestination else "") }
+    var expandedRegion by remember { mutableStateOf<Region?>(null) }
+
+    Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+        // Search bar
+        OutlinedTextField(
+            value         = searchText,
+            onValueChange = { searchText = it },
+            placeholder   = { Text("Search country... e.g. Thailand", color = TextSecondary) },
+            leadingIcon   = { Icon(Icons.Filled.Search, contentDescription = null, tint = TextSecondary) },
+            modifier      = Modifier.fillMaxWidth(),
+            singleLine    = true,
+            colors        = OutlinedTextFieldDefaults.colors(
+                focusedTextColor        = TextPrimary,
+                unfocusedTextColor      = TextPrimary,
+                focusedBorderColor      = TealPrimary,
+                unfocusedBorderColor    = CardBorder,
+                focusedContainerColor   = AppSurface,
+                unfocusedContainerColor = AppSurface
+            )
+        )
+
+        if (searchText.isNotEmpty() &&
+            (selectedDestination.isEmpty() || searchText != selectedDestination)) {
+            // Search results
+            val matches = PlanRepository.countries
+                .filter { it.name.contains(searchText, ignoreCase = true) }
+            if (matches.isNotEmpty()) {
+                Card(
+                    colors    = CardDefaults.cardColors(containerColor = AppSurface),
+                    shape     = RoundedCornerShape(12.dp),
+                    border    = BorderStroke(1.dp, CardBorder),
+                    elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+                ) {
+                    Column {
+                        matches.take(8).forEach { country ->
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .clickable {
+                                        onSelect(country.name)
+                                        searchText = country.name
+                                    }
+                                    .padding(horizontal = 14.dp, vertical = 10.dp),
+                                horizontalArrangement = Arrangement.spacedBy(10.dp),
+                                verticalAlignment     = Alignment.CenterVertically
+                            ) {
+                                Text(country.flag, fontSize = 20.sp)
+                                Column {
+                                    Text(country.name,
+                                         style = MaterialTheme.typography.bodyMedium, color = TextPrimary)
+                                    Text(PlanRepository.regionForCountry(country.name).displayName,
+                                         style = MaterialTheme.typography.labelSmall,  color = TextSecondary)
+                                }
+                                if (country.name == selectedDestination) {
+                                    Spacer(Modifier.weight(1f))
+                                    Icon(Icons.Filled.Check, contentDescription = null,
+                                         tint = TealPrimary, modifier = Modifier.size(16.dp))
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        } else {
+            // Region cards
+            Region.entries.forEach { region ->
+                RegionCard(
+                    region               = region,
+                    isExpanded           = expandedRegion == region,
+                    selectedDestination  = selectedDestination,
+                    onToggle             = {
+                        expandedRegion = if (expandedRegion == region) null else region
+                    },
+                    onSelectCountry      = { name ->
+                        onSelect(name)
+                        searchText = name
+                    }
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun RegionCard(
+    region:              Region,
+    isExpanded:          Boolean,
+    selectedDestination: String,
+    onToggle:            () -> Unit,
+    onSelectCountry:     (String) -> Unit
+) {
+    val countries      = PlanRepository.countriesInRegion(region)
+    val hasSelected    = countries.any { it.name == selectedDestination }
+
+    Card(
+        colors    = CardDefaults.cardColors(
+            containerColor = if (hasSelected) TealPrimary.copy(alpha = 0.06f) else AppSurface),
+        shape     = RoundedCornerShape(14.dp),
+        border    = BorderStroke(1.dp, if (hasSelected) TealPrimary.copy(alpha = 0.5f) else CardBorder),
+        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
+    ) {
+        Column {
+            // Region header row
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clickable(onClick = onToggle)
+                    .padding(14.dp),
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
+                verticalAlignment     = Alignment.CenterVertically
+            ) {
+                Text(region.emoji, fontSize = 26.sp)
+                Column(Modifier.weight(1f)) {
+                    Text(region.displayName,
+                         style      = MaterialTheme.typography.titleSmall,
+                         color      = TextPrimary,
+                         fontWeight = FontWeight.SemiBold)
+                    Text(region.description,
+                         style = MaterialTheme.typography.labelSmall, color = TextSecondary)
+                }
+                if (hasSelected) {
+                    val sel = countries.find { it.name == selectedDestination }
+                    if (sel != null) {
+                        Text("${sel.flag} ${sel.name}",
+                             style = MaterialTheme.typography.labelSmall, color = TealPrimary)
+                        Spacer(Modifier.width(6.dp))
+                    }
+                }
+                Icon(
+                    imageVector        = if (isExpanded) Icons.Filled.ExpandLess else Icons.Filled.ExpandMore,
+                    contentDescription = null,
+                    tint               = TextSecondary,
+                    modifier           = Modifier.size(20.dp)
+                )
+            }
+
+            // Expanded country list
+            AnimatedVisibility(
+                visible = isExpanded,
+                enter   = expandVertically() + fadeIn(),
+                exit    = shrinkVertically() + fadeOut()
+            ) {
+                Column(
+                    modifier = Modifier.padding(start = 14.dp, end = 14.dp, bottom = 10.dp),
+                    verticalArrangement = Arrangement.spacedBy(2.dp)
+                ) {
+                    countries.forEach { country ->
+                        val isSelected = country.name == selectedDestination
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .background(
+                                    if (isSelected) TealPrimary.copy(alpha = 0.10f)
+                                    else Color.Transparent,
+                                    RoundedCornerShape(8.dp)
+                                )
+                                .clickable { onSelectCountry(country.name) }
+                                .padding(horizontal = 8.dp, vertical = 8.dp),
+                            horizontalArrangement = Arrangement.spacedBy(10.dp),
+                            verticalAlignment     = Alignment.CenterVertically
+                        ) {
+                            Text(country.flag, fontSize = 18.sp)
+                            Text(country.name,
+                                 style    = MaterialTheme.typography.bodyMedium,
+                                 color    = if (isSelected) TealPrimary else TextPrimary,
+                                 modifier = Modifier.weight(1f))
+                            if (isSelected) {
+                                Icon(Icons.Filled.Check, contentDescription = null,
+                                     tint = TealPrimary, modifier = Modifier.size(16.dp))
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
-// Step 2 — Usage Sliders
+// Step 2 — Usage Sliders (Feature 3: updated MB/hr rates)
 // ─────────────────────────────────────────────────────────────────────────────
 
 @Composable
@@ -383,17 +496,13 @@ private fun Step2Content(
             .padding(horizontal = 20.dp, vertical = 8.dp),
         verticalArrangement = Arrangement.spacedBy(20.dp)
     ) {
-        // Header
         Column {
             Text("Fine-tune Your Usage",
-                 style = MaterialTheme.typography.headlineSmall,
-                 color = TextPrimary)
+                 style = MaterialTheme.typography.headlineSmall, color = TextPrimary)
             Text("Drag sliders to reflect your daily habits on the road.",
-                 style = MaterialTheme.typography.bodyMedium,
-                 color = TextSecondary)
+                 style = MaterialTheme.typography.bodyMedium,    color = TextSecondary)
         }
 
-        // Sliders card
         Card(
             colors = CardDefaults.cardColors(containerColor = AppSurface),
             shape  = RoundedCornerShape(16.dp),
@@ -409,7 +518,7 @@ private fun Step2Content(
                     subLabel = "HD, Netflix/YouTube",
                     value    = sliders.videoStreaming,
                     hours    = sliders.videoStreamingHrs(),
-                    mbPerHr  = 700,
+                    mbPerHr  = 933,
                     onChange = { usageVm.setVideoStreaming(it) }
                 )
                 UsageSliderRow(
@@ -418,7 +527,7 @@ private fun Step2Content(
                     subLabel = "Google Maps, Waze",
                     value    = sliders.maps,
                     hours    = sliders.mapsHrs(),
-                    mbPerHr  = 20,
+                    mbPerHr  = 10,
                     onChange = { usageVm.setMaps(it) }
                 )
                 UsageSliderRow(
@@ -427,7 +536,7 @@ private fun Step2Content(
                     subLabel = "FaceTime, WhatsApp",
                     value    = sliders.videoCalls,
                     hours    = sliders.videoCallsHrs(),
-                    mbPerHr  = 300,
+                    mbPerHr  = 933,
                     onChange = { usageVm.setVideoCalls(it) }
                 )
                 UsageSliderRow(
@@ -436,7 +545,7 @@ private fun Step2Content(
                     subLabel = "Instagram, TikTok",
                     value    = sliders.socialMedia,
                     hours    = sliders.socialMediaHrs(),
-                    mbPerHr  = 100,
+                    mbPerHr  = 140,
                     onChange = { usageVm.setSocialMedia(it) }
                 )
                 UsageSliderRow(
@@ -451,68 +560,76 @@ private fun Step2Content(
             }
         }
 
-        // Estimate summary
-        Row(
-            modifier              = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(12.dp)
-        ) {
-            EstimateCard(
-                label    = "Daily Usage",
-                value    = "${"%.2f".format(dailyGb)} GB",
-                subValue = "${"%.0f".format(dailyGb * 1024)} MB/day",
-                modifier = Modifier.weight(1f)
-            )
-            EstimateCard(
-                label    = "Trip Total",
-                value    = "${"%.1f".format(totalGb)} GB",
-                subValue = "for $tripDays days",
-                modifier = Modifier.weight(1f)
-            )
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+            EstimateCard("Daily Usage",  "${"%.2f".format(dailyGb)} GB",
+                         "${"%.0f".format(dailyGb * 1024)} MB/day", Modifier.weight(1f))
+            EstimateCard("Trip Total",   "${"%.1f".format(totalGb)} GB",
+                         "for $tripDays days",                       Modifier.weight(1f))
         }
-
         Spacer(Modifier.height(8.dp))
     }
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Step 3 — Plan Confirmation
+// Step 3 — Plan Review (Features 5 & 7)
 // ─────────────────────────────────────────────────────────────────────────────
 
 @Composable
 private fun Step3Content(
-    state:   com.sailguard.app.viewmodel.TripSetupState,
-    sliders: UsageSliders,
-    vm:      TripViewModel
+    state:     com.sailguard.app.viewmodel.TripSetupState,
+    sliders:   UsageSliders,
+    vm:        TripViewModel,
+    historyVm: HistoryViewModel
 ) {
-    val context = LocalContext.current
+    val trips by historyVm.trips.collectAsState()
 
-    // Load history once when Step 3 is composed.
-    val history = remember { TripHistoryRepository.getHistory(context) }
-
-    // Historical average daily GB across past trips (null = no history).
-    val historicalDailyGb: Double? = remember(history) {
-        if (history.isEmpty()) null
-        else history.sumOf { it.actualGb / it.durationDays.coerceAtLeast(1) } / history.size
+    // ── History-based recommendation logic (Feature 7) ────────────────────────
+    val sameCountryTrips = remember(trips, state.destination) {
+        trips.filter { it.destination == state.destination }
+    }
+    val sameCountryDailyGb: Double? = remember(sameCountryTrips) {
+        if (sameCountryTrips.isEmpty()) null
+        else sameCountryTrips.sumOf { it.actualGbUsed / it.tripDays.coerceAtLeast(1) } /
+             sameCountryTrips.size
+    }
+    val allTripsDailyGb: Double? = remember(trips) {
+        if (trips.isEmpty()) null
+        else trips.sumOf { it.actualGbUsed / it.tripDays.coerceAtLeast(1) } / trips.size
     }
 
-    // 50/50 blend of slider estimate and historical average.
-    val blendedDailyGb: Double? = if (historicalDailyGb != null)
-        (sliders.dailyGb + historicalDailyGb) / 2.0
-    else null
+    val blend: BlendResult = remember(sameCountryDailyGb, allTripsDailyGb, sliders.dailyGb) {
+        when {
+            sameCountryDailyGb != null -> BlendResult(
+                blendedDailyGb = sliders.dailyGb * 0.40 + sameCountryDailyGb * 0.60,
+                historyDailyGb = sameCountryDailyGb,
+                tripCount      = sameCountryTrips.size,
+                isSameCountry  = true,
+                lastTrip       = sameCountryTrips.firstOrNull()
+            )
+            allTripsDailyGb != null -> BlendResult(
+                blendedDailyGb = sliders.dailyGb * 0.60 + allTripsDailyGb * 0.40,
+                historyDailyGb = allTripsDailyGb,
+                tripCount      = trips.size,
+                isSameCountry  = false,
+                lastTrip       = null
+            )
+            else -> BlendResult(null, null, 0, false, null)
+        }
+    }
 
-    // Best plan covering blended estimate × duration × 1.2 buffer.
-    val historyRecommendedPlan: SailyPlan? = if (blendedDailyGb != null) {
-        val needed = blendedDailyGb * state.durationDays * 1.2
-        state.availablePlans
-            .filter { it.dataGB >= needed }
+    val blendedRecommendedPlan: SailyPlan? = remember(blend, state.availablePlans, state.durationDays) {
+        val bd = blend.blendedDailyGb ?: return@remember null
+        val needed = bd * state.durationDays * 1.2
+        state.availablePlans.filter { !it.isUnlimited && it.dataGB >= needed }
             .minByOrNull { it.priceUSD }
-            ?: state.availablePlans.maxByOrNull { it.dataGB }
-    } else null
+            ?: state.availablePlans.filter { !it.isUnlimited }.maxByOrNull { it.dataGB }
+    }
 
-    var showPlanOverride by remember { mutableStateOf(false) }
-    val plan = state.selectedPlan ?: state.suggestedPlan
-
-    val sliderTotalGb = sliders.dailyGb * state.durationDays
+    // Best value plan = highest GB / price ratio among data plans
+    val bestValuePlan: SailyPlan? = remember(state.availablePlans) {
+        state.availablePlans.filter { !it.isUnlimited && it.dataGB > 0 }
+            .maxByOrNull { it.dataGB / it.priceUSD }
+    }
 
     Column(
         modifier = Modifier
@@ -521,133 +638,79 @@ private fun Step3Content(
             .padding(horizontal = 20.dp, vertical = 8.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
-        // Header
         Column {
             Text("Review Your Plan",
-                 style = MaterialTheme.typography.headlineSmall,
-                 color = TextPrimary)
+                 style = MaterialTheme.typography.headlineSmall, color = TextPrimary)
             Text("${state.flag}  ${state.destination}  ·  ${state.durationDays} days",
-                 style = MaterialTheme.typography.bodyMedium,
-                 color = TextSecondary)
+                 style = MaterialTheme.typography.bodyMedium, color = TextSecondary)
         }
 
-        if (plan == null) {
+        if (state.availablePlans.isEmpty()) {
             Card(
                 colors = CardDefaults.cardColors(containerColor = AppSurface),
                 shape  = RoundedCornerShape(14.dp),
                 border = BorderStroke(1.dp, CardBorder)
             ) {
-                Text("No plan available for this destination. Go back and try another.",
+                Text("No plans available. Go back and try another destination.",
                      modifier = Modifier.padding(16.dp),
-                     style    = MaterialTheme.typography.bodyMedium,
-                     color    = TextSecondary)
+                     style    = MaterialTheme.typography.bodyMedium, color = TextSecondary)
             }
         } else {
-            // ── History-blended recommendation card ───────────────────────────
-            if (historyRecommendedPlan != null && historicalDailyGb != null && blendedDailyGb != null) {
-                HistoryInsightCard(
-                    historyCount       = history.size,
-                    historicalDailyGb  = historicalDailyGb,
-                    sliderDailyGb      = sliders.dailyGb,
-                    blendedDailyGb     = blendedDailyGb,
-                    durationDays       = state.durationDays,
-                    recommendedGb      = historyRecommendedPlan.dataGB
+            // ── Smart history card (Feature 7) ────────────────────────────────
+            if (blend.blendedDailyGb != null && blend.historyDailyGb != null &&
+                blendedRecommendedPlan != null) {
+                SmartHistoryCard(
+                    blend                  = blend,
+                    sliderDailyGb          = sliders.dailyGb,
+                    durationDays           = state.durationDays,
+                    recommendedGb          = if (blendedRecommendedPlan.isUnlimited) -1.0
+                                             else blendedRecommendedPlan.dataGB,
+                    destination            = state.destination
                 )
             }
 
-            // Selected plan card
-            SectionLabel("Recommended Plan")
-            PlanCard(
-                plan        = plan,
-                isSuggested = plan.id == state.suggestedPlan?.id,
-                needed      = state.usageStyle.dailyGb * state.durationDays
-            )
+            // ── All plans (Feature 5: Saily-style cards) ──────────────────────
+            SectionLabel("Available Plans")
 
-            // Coverage check against sliders
-            if (sliderTotalGb > 0.0) {
-                val sufficient = plan.dataGB >= sliderTotalGb
-                val bgColor    = if (sufficient) SuccessGreen.copy(0.08f) else WarningAmber.copy(0.08f)
-                val accent     = if (sufficient) SuccessGreen else WarningAmber
-
-                Card(
-                    colors = CardDefaults.cardColors(containerColor = bgColor),
-                    shape  = RoundedCornerShape(12.dp),
-                    border = BorderStroke(1.dp, accent.copy(alpha = 0.35f))
-                ) {
-                    Row(
-                        modifier              = Modifier.padding(14.dp),
-                        horizontalArrangement = Arrangement.spacedBy(10.dp),
-                        verticalAlignment     = Alignment.CenterVertically
-                    ) {
-                        Text(if (sufficient) "✓" else "⚠", fontSize = 18.sp)
-                        Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                            Text(
-                                if (sufficient) "Covers your estimated usage"
-                                else "May not cover your estimated usage",
-                                style      = MaterialTheme.typography.titleSmall,
-                                color      = TextPrimary,
-                                fontWeight = FontWeight.SemiBold
-                            )
-                            Text(
-                                "Sliders estimate ${"%.1f".format(sliderTotalGb)} GB total" +
-                                " — plan includes ${plan.dataGB.toLong()} GB",
-                                style = MaterialTheme.typography.bodySmall,
-                                color = TextSecondary
-                            )
-                        }
-                    }
-                }
-            }
-
-            // Plan override
-            Row(
-                modifier          = Modifier
-                    .clickable { showPlanOverride = !showPlanOverride }
-                    .padding(vertical = 4.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Text(
-                    if (showPlanOverride) "Hide all plans" else "Choose a different plan",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = TealPrimary
+            state.availablePlans.forEach { plan ->
+                SailyPlanCard(
+                    plan           = plan,
+                    isSelected     = state.selectedPlan?.id == plan.id ||
+                                     (state.selectedPlan == null && plan.id == state.suggestedPlan?.id),
+                    isBestChoice   = plan.id == bestValuePlan?.id,
+                    isBlendMatch   = plan.id == blendedRecommendedPlan?.id && blend.blendedDailyGb != null,
+                    onSelect       = { vm.selectPlan(it) }
                 )
-                Spacer(Modifier.width(4.dp))
-                Icon(
-                    imageVector        = if (showPlanOverride) Icons.Filled.ExpandLess
-                                         else Icons.Filled.ExpandMore,
-                    contentDescription = null,
-                    tint               = TealPrimary,
-                    modifier           = Modifier.size(16.dp)
-                )
-            }
-
-            if (showPlanOverride) {
-                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    state.availablePlans.forEach { p ->
-                        PlanOptionRow(
-                            plan       = p,
-                            isSelected = state.selectedPlan?.id == p.id,
-                            needed     = state.usageStyle.dailyGb * state.durationDays,
-                            onClick    = { vm.selectPlan(p) }
-                        )
-                    }
-                }
             }
         }
-
         Spacer(Modifier.height(8.dp))
     }
 }
 
+private data class BlendResult(
+    val blendedDailyGb: Double?,
+    val historyDailyGb: Double?,
+    val tripCount:      Int,
+    val isSameCountry:  Boolean,
+    val lastTrip:       TripHistoryEntity?
+)
+
+// ── Smart history insight card ────────────────────────────────────────────────
+
 @Composable
-private fun HistoryInsightCard(
-    historyCount:      Int,
-    historicalDailyGb: Double,
+private fun SmartHistoryCard(
+    blend:             BlendResult,
     sliderDailyGb:     Double,
-    blendedDailyGb:    Double,
     durationDays:      Int,
-    recommendedGb:     Double
+    recommendedGb:     Double,
+    destination:       String
 ) {
+    val historyGb  = blend.historyDailyGb ?: return
+    val blendedGb  = blend.blendedDailyGb ?: return
+    val recLabel   = if (recommendedGb < 0) "Unlimited" else "${recommendedGb.toLong()} GB"
+    val histWeight = if (blend.isSameCountry) 60 else 40
+    val sliderWeight = 100 - histWeight
+
     Card(
         colors = CardDefaults.cardColors(containerColor = TealPrimary.copy(alpha = 0.07f)),
         shape  = RoundedCornerShape(14.dp),
@@ -658,24 +721,37 @@ private fun HistoryInsightCard(
             verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
             Text(
-                "Based on your usage history + current settings, we recommend " +
-                "${recommendedGb.toLong()} GB",
+                "Based on your usage history + current settings, we recommend $recLabel",
                 style      = MaterialTheme.typography.titleSmall,
                 color      = TealPrimary,
                 fontWeight = FontWeight.SemiBold
             )
             Column(verticalArrangement = Arrangement.spacedBy(3.dp)) {
-                val tripWord = if (historyCount == 1) "trip" else "trips"
-                InsightLine(
-                    "Past $historyCount $tripWord averaged ${"%.2f".format(historicalDailyGb)} GB/day"
+                val tripWord = if (blend.tripCount == 1) "trip" else "trips"
+                if (blend.isSameCountry) {
+                    HistoryInsightLine(
+                        "Your ${blend.tripCount} past $tripWord to $destination averaged " +
+                        "${"%.2f".format(historyGb)} GB/day"
+                    )
+                    blend.lastTrip?.let { t ->
+                        HistoryInsightLine(
+                            "Last trip: used ${"%.2f".format(t.actualGbUsed)} GB in ${t.tripDays} days"
+                        )
+                    }
+                } else {
+                    HistoryInsightLine(
+                        "Your ${blend.tripCount} past $tripWord averaged " +
+                        "${"%.2f".format(historyGb)} GB/day overall"
+                    )
+                }
+                HistoryInsightLine("Slider estimate: ${"%.2f".format(sliderDailyGb)} GB/day")
+                HistoryInsightLine(
+                    "$histWeight% history + $sliderWeight% slider = " +
+                    "${"%.2f".format(blendedGb)} GB/day blended"
                 )
-                InsightLine(
-                    "Slider estimate: ${"%.2f".format(sliderDailyGb)} GB/day"
-                )
-                InsightLine(
-                    "50/50 blend: ${"%.2f".format(blendedDailyGb)} GB/day " +
-                    "× $durationDays days × 1.2 buffer = " +
-                    "${"%.1f".format(blendedDailyGb * durationDays * 1.2)} GB needed"
+                HistoryInsightLine(
+                    "${"%.2f".format(blendedGb)} × $durationDays days × 1.2 buffer = " +
+                    "${"%.1f".format(blendedGb * durationDays * 1.2)} GB needed → $recLabel"
                 )
             }
         }
@@ -683,12 +759,158 @@ private fun HistoryInsightCard(
 }
 
 @Composable
-private fun InsightLine(text: String) {
-    Text(
-        text  = "· $text",
-        style = MaterialTheme.typography.bodySmall,
-        color = TextSecondary
-    )
+private fun HistoryInsightLine(text: String) {
+    Text("· $text", style = MaterialTheme.typography.bodySmall, color = TextSecondary)
+}
+
+// ── Saily-style plan card (Feature 5) ─────────────────────────────────────────
+
+@Composable
+private fun SailyPlanCard(
+    plan:         SailyPlan,
+    isSelected:   Boolean,
+    isBestChoice: Boolean,
+    isBlendMatch: Boolean,
+    onSelect:     (SailyPlan) -> Unit
+) {
+    var selectedDays by remember { mutableStateOf(15) }
+    val displayPrice = if (plan.isUnlimited)
+        PlanRepository.unlimitedPriceForDays(plan.priceUSD, selectedDays)
+    else plan.priceUSD
+
+    val borderColor    = when {
+        isSelected   -> TealPrimary
+        isBestChoice -> TealPrimary.copy(alpha = 0.6f)
+        else         -> CardBorder
+    }
+    val borderWidth    = if (isSelected || isBestChoice) 2.dp else 1.dp
+    val containerColor = when {
+        isBestChoice && !isSelected -> Color(0xFF0C1F1C)
+        isSelected                  -> TealPrimary.copy(alpha = 0.07f)
+        else                        -> AppSurface
+    }
+    val textOnDark = isBestChoice && !isSelected
+
+    Card(
+        modifier  = Modifier.fillMaxWidth().clickable { onSelect(plan) },
+        colors    = CardDefaults.cardColors(containerColor = containerColor),
+        shape     = RoundedCornerShape(14.dp),
+        border    = BorderStroke(borderWidth, borderColor),
+        elevation = CardDefaults.cardElevation(defaultElevation = if (isSelected) 2.dp else 0.dp)
+    ) {
+        Column(
+            modifier            = Modifier.padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(10.dp)
+        ) {
+            // ── Badges row ────────────────────────────────────────────────────
+            Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                if (isBestChoice) {
+                    PlanBadge("Best Choice", Color.White, TealPrimary)
+                }
+                if (isBlendMatch && !isBestChoice) {
+                    PlanBadge("History Pick", TealPrimary, TealPrimary.copy(alpha = 0.15f))
+                }
+            }
+
+            // ── GB + price ────────────────────────────────────────────────────
+            Row(
+                modifier              = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment     = Alignment.CenterVertically
+            ) {
+                Text(
+                    text       = if (plan.isUnlimited) "Unlimited" else "${plan.dataGB.toLong()} GB",
+                    style      = MaterialTheme.typography.headlineMedium,
+                    color      = if (textOnDark) Color.White else TextPrimary,
+                    fontWeight = FontWeight.Bold
+                )
+                Column(horizontalAlignment = Alignment.End) {
+                    Text(
+                        "$${"%.2f".format(displayPrice)}",
+                        style      = MaterialTheme.typography.headlineSmall,
+                        color      = if (textOnDark) Color.White else TealPrimary,
+                        fontWeight = FontWeight.Bold
+                    )
+                    Text("USD",
+                         style = MaterialTheme.typography.labelSmall,
+                         color = if (textOnDark) Color.White.copy(0.6f) else TextSecondary)
+                }
+            }
+
+            // ── Unlimited: days selector ──────────────────────────────────────
+            if (plan.isUnlimited) {
+                Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                    listOf(7, 15, 30, 90).forEach { days ->
+                        val active = selectedDays == days
+                        Surface(
+                            modifier = Modifier.clickable { selectedDays = days },
+                            shape    = RoundedCornerShape(6.dp),
+                            color    = if (active) TealPrimary else AppSurface2,
+                            border   = if (active) null else BorderStroke(1.dp, CardBorder)
+                        ) {
+                            Text(
+                                "${days}d",
+                                modifier   = Modifier.padding(horizontal = 10.dp, vertical = 4.dp),
+                                style      = MaterialTheme.typography.labelSmall,
+                                color      = if (active) Color.White else TextSecondary,
+                                fontWeight = if (active) FontWeight.SemiBold else FontWeight.Normal
+                            )
+                        }
+                    }
+                }
+            } else {
+                // Validity
+                Text(
+                    "${plan.validDays} days",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = if (textOnDark) Color.White.copy(0.7f) else TextSecondary
+                )
+            }
+
+            // ── Bottom row: Saily credits + network + selected check ──────────
+            Row(
+                modifier              = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment     = Alignment.CenterVertically
+            ) {
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    // 3% Saily credits badge
+                    Surface(
+                        shape = RoundedCornerShape(4.dp),
+                        color = if (textOnDark) TealPrimary.copy(0.3f) else TealPrimary.copy(0.12f)
+                    ) {
+                        Text(
+                            "3% Saily credits",
+                            modifier   = Modifier.padding(horizontal = 6.dp, vertical = 3.dp),
+                            style      = MaterialTheme.typography.labelSmall,
+                            color      = if (textOnDark) Color.White else TealPrimary,
+                            fontWeight = FontWeight.Medium
+                        )
+                    }
+                    Text(plan.network,
+                         style = MaterialTheme.typography.labelSmall,
+                         color = if (textOnDark) Color.White.copy(0.6f) else TextSecondary)
+                }
+                if (isSelected) {
+                    Icon(Icons.Filled.Check, contentDescription = "Selected",
+                         tint = TealPrimary, modifier = Modifier.size(18.dp))
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun PlanBadge(label: String, textColor: Color, bgColor: Color) {
+    Surface(shape = RoundedCornerShape(6.dp), color = bgColor) {
+        Text(
+            label,
+            modifier   = Modifier.padding(horizontal = 8.dp, vertical = 3.dp),
+            style      = MaterialTheme.typography.labelSmall,
+            color      = textColor,
+            fontWeight = FontWeight.Bold
+        )
+    }
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -698,16 +920,12 @@ private fun InsightLine(text: String) {
 @Composable
 private fun WizardStepBar(currentStep: Int, modifier: Modifier = Modifier) {
     val labels = listOf("Destination", "Usage", "Plan")
-    Row(
-        modifier          = modifier,
-        verticalAlignment = Alignment.Top
-    ) {
+    Row(modifier = modifier, verticalAlignment = Alignment.Top) {
         labels.forEachIndexed { index, label ->
             val stepNum   = index + 1
             val isDone    = stepNum < currentStep
             val isCurrent = stepNum == currentStep
 
-            // Circle + label stacked
             Column(
                 horizontalAlignment = Alignment.CenterHorizontally,
                 modifier            = Modifier.width(56.dp)
@@ -716,8 +934,8 @@ private fun WizardStepBar(currentStep: Int, modifier: Modifier = Modifier) {
                     modifier         = Modifier
                         .size(28.dp)
                         .background(
-                            color = if (isDone || isCurrent) TealPrimary else AppSurface,
-                            shape = CircleShape
+                            if (isDone || isCurrent) TealPrimary else AppSurface,
+                            CircleShape
                         ),
                     contentAlignment = Alignment.Center
                 ) {
@@ -742,7 +960,6 @@ private fun WizardStepBar(currentStep: Int, modifier: Modifier = Modifier) {
                 )
             }
 
-            // Connector line between circles (centered at circle height = 14dp from top)
             if (index < labels.size - 1) {
                 Box(
                     modifier = Modifier
@@ -771,113 +988,13 @@ private fun SectionLabel(text: String) {
 }
 
 @Composable
-private fun PlanCard(plan: SailyPlan, isSuggested: Boolean, needed: Double) {
-    val isSufficient = plan.dataGB >= needed
-    Card(
-        colors = CardDefaults.cardColors(containerColor = AppSurface),
-        shape  = RoundedCornerShape(14.dp),
-        border = BorderStroke(1.5.dp, if (isSuggested) TealPrimary else CardBorder)
-    ) {
-        Row(
-            modifier              = Modifier
-                .fillMaxWidth()
-                .padding(16.dp),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment     = Alignment.CenterVertically
-        ) {
-            Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                Row(
-                    verticalAlignment     = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(6.dp)
-                ) {
-                    Text("${plan.dataGB.toLong()} GB",
-                         style      = MaterialTheme.typography.headlineSmall,
-                         color      = TextPrimary,
-                         fontWeight = FontWeight.Bold)
-                    if (isSuggested) {
-                        Surface(color = TealPrimary, shape = RoundedCornerShape(6.dp)) {
-                            Text("BEST FIT",
-                                 modifier   = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
-                                 style      = MaterialTheme.typography.labelSmall,
-                                 color      = Color.White,
-                                 fontWeight = FontWeight.Bold)
-                        }
-                    }
-                }
-                Text("${plan.network}  ·  Valid ${plan.validDays} days",
-                     style = MaterialTheme.typography.bodySmall, color = TextSecondary)
-                if (!isSufficient) {
-                    Text("⚠ May not cover estimated usage",
-                         style = MaterialTheme.typography.bodySmall, color = WarningAmber)
-                }
-            }
-            Column(horizontalAlignment = Alignment.End) {
-                Text("$${"%.2f".format(plan.priceUSD)}",
-                     style      = MaterialTheme.typography.titleLarge,
-                     color      = TealPrimary,
-                     fontWeight = FontWeight.Bold)
-                Text("USD", style = MaterialTheme.typography.labelSmall, color = TextSecondary)
-            }
-        }
-    }
-}
-
-@Composable
-private fun PlanOptionRow(
-    plan: SailyPlan,
-    isSelected: Boolean,
-    needed: Double,
-    onClick: () -> Unit
-) {
-    val isSufficient = plan.dataGB >= needed
-    Surface(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clickable(onClick = onClick),
-        shape    = RoundedCornerShape(10.dp),
-        color    = if (isSelected) TealPrimary.copy(alpha = 0.10f) else AppSurface,
-        border   = BorderStroke(1.dp, if (isSelected) TealPrimary else CardBorder)
-    ) {
-        Row(
-            modifier              = Modifier.padding(12.dp),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment     = Alignment.CenterVertically
-        ) {
-            Row(
-                verticalAlignment     = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(10.dp)
-            ) {
-                if (isSelected) {
-                    Icon(Icons.Filled.Check, contentDescription = null,
-                         tint = TealPrimary, modifier = Modifier.size(18.dp))
-                } else {
-                    Spacer(Modifier.size(18.dp))
-                }
-                Column {
-                    Text("${plan.dataGB.toLong()} GB  ·  ${plan.validDays}d",
-                         style = MaterialTheme.typography.bodyMedium, color = TextPrimary)
-                    if (!isSufficient) {
-                        Text("Might run short",
-                             style = MaterialTheme.typography.bodySmall, color = ErrorRed)
-                    }
-                }
-            }
-            Text("$${"%.2f".format(plan.priceUSD)}",
-                 style      = MaterialTheme.typography.titleSmall,
-                 color      = if (isSelected) TealPrimary else TextPrimary,
-                 fontWeight = FontWeight.SemiBold)
-        }
-    }
-}
-
-@Composable
 private fun UsageSliderRow(
-    icon: ImageVector,
-    label: String,
+    icon:     ImageVector,
+    label:    String,
     subLabel: String,
-    value: Float,
-    hours: Float,
-    mbPerHr: Int,
+    value:    Float,
+    hours:    Float,
+    mbPerHr:  Int,
     onChange: (Float) -> Unit
 ) {
     Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
@@ -886,21 +1003,17 @@ private fun UsageSliderRow(
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment     = Alignment.CenterVertically
         ) {
-            Row(
-                verticalAlignment     = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                Icon(icon, contentDescription = null,
-                     tint = TealPrimary, modifier = Modifier.size(20.dp))
+            Row(verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                Icon(icon, contentDescription = null, tint = TealPrimary, modifier = Modifier.size(20.dp))
                 Column {
-                    Text(label, style = MaterialTheme.typography.titleSmall, color = TextPrimary)
+                    Text(label,    style = MaterialTheme.typography.titleSmall, color = TextPrimary)
                     Text(subLabel, style = MaterialTheme.typography.labelSmall, color = TextSecondary)
                 }
             }
             Column(horizontalAlignment = Alignment.End) {
                 Text("${"%.1f".format(hours)} hrs/day",
-                     style      = MaterialTheme.typography.bodySmall,
-                     color      = TealPrimary,
+                     style = MaterialTheme.typography.bodySmall, color = TealPrimary,
                      fontWeight = FontWeight.SemiBold)
                 Text("~${"%.0f".format(hours * mbPerHr)} MB",
                      style = MaterialTheme.typography.labelSmall, color = TextSecondary)
@@ -920,8 +1033,8 @@ private fun UsageSliderRow(
 
 @Composable
 private fun EstimateCard(
-    label: String,
-    value: String,
+    label:    String,
+    value:    String,
     subValue: String,
     modifier: Modifier = Modifier
 ) {
@@ -935,14 +1048,10 @@ private fun EstimateCard(
             modifier            = Modifier.padding(14.dp),
             verticalArrangement = Arrangement.spacedBy(4.dp)
         ) {
-            Text(label.uppercase(),
-                 style = MaterialTheme.typography.labelSmall, color = TextSecondary)
-            Text(value,
-                 style      = MaterialTheme.typography.headlineSmall,
-                 color      = TextPrimary,
-                 fontWeight = FontWeight.Bold)
-            Text(subValue,
-                 style = MaterialTheme.typography.bodySmall, color = TextSecondary)
+            Text(label.uppercase(), style = MaterialTheme.typography.labelSmall, color = TextSecondary)
+            Text(value, style = MaterialTheme.typography.headlineSmall,
+                 color = TextPrimary, fontWeight = FontWeight.Bold)
+            Text(subValue, style = MaterialTheme.typography.bodySmall, color = TextSecondary)
         }
     }
 }

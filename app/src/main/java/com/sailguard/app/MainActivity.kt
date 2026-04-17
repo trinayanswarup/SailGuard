@@ -35,6 +35,7 @@ import com.sailguard.app.ui.navigation.Screen
 import com.sailguard.app.ui.navigation.bottomNavScreens
 import com.sailguard.app.ui.screens.AlertsScreen
 import com.sailguard.app.ui.screens.DashboardScreen
+import com.sailguard.app.ui.screens.HistoryScreen
 import com.sailguard.app.ui.screens.SmartModeScreen
 import com.sailguard.app.ui.screens.TripSetupScreen
 import com.sailguard.app.ui.theme.AppBackground
@@ -43,6 +44,7 @@ import com.sailguard.app.ui.theme.SailGuardTheme
 import com.sailguard.app.ui.theme.TealPrimary
 import com.sailguard.app.ui.theme.TextSecondary
 import com.sailguard.app.viewmodel.DashboardViewModel
+import com.sailguard.app.viewmodel.HistoryViewModel
 import com.sailguard.app.viewmodel.SmartModeViewModel
 import com.sailguard.app.viewmodel.TripViewModel
 import com.sailguard.app.viewmodel.UsageViewModel
@@ -50,17 +52,18 @@ import kotlinx.coroutines.launch
 
 class MainActivity : ComponentActivity() {
 
-    private val tripVm:  TripViewModel      by viewModels()
-    private val usageVm: UsageViewModel     by viewModels()
-    private val dashVm:  DashboardViewModel by viewModels()
-    private val smartVm: SmartModeViewModel by viewModels()
+    private val tripVm:    TripViewModel      by viewModels()
+    private val usageVm:   UsageViewModel     by viewModels()
+    private val dashVm:    DashboardViewModel by viewModels()
+    private val smartVm:   SmartModeViewModel by viewModels()
+    private val historyVm: HistoryViewModel   by viewModels()
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         setContent {
             SailGuardTheme {
-                SailGuardApp(tripVm, usageVm, dashVm, smartVm)
+                SailGuardApp(tripVm, usageVm, dashVm, smartVm, historyVm)
             }
         }
     }
@@ -68,10 +71,11 @@ class MainActivity : ComponentActivity() {
 
 @Composable
 private fun SailGuardApp(
-    tripVm:  TripViewModel,
-    usageVm: UsageViewModel,
-    dashVm:  DashboardViewModel,
-    smartVm: SmartModeViewModel
+    tripVm:    TripViewModel,
+    usageVm:   UsageViewModel,
+    dashVm:    DashboardViewModel,
+    smartVm:   SmartModeViewModel,
+    historyVm: HistoryViewModel
 ) {
     val navController     = rememberNavController()
     val snackbarHostState = remember { SnackbarHostState() }
@@ -110,6 +114,7 @@ private fun SailGuardApp(
                     TripSetupScreen(
                         vm            = tripVm,
                         usageVm       = usageVm,
+                        historyVm     = historyVm,
                         onTripStarted = {
                             navController.navigate(Screen.Dashboard.route) {
                                 launchSingleTop = true
@@ -136,6 +141,9 @@ private fun SailGuardApp(
                 }
                 composable(Screen.Alerts.route) {
                     AlertsScreen(tripVm = tripVm, dashVm = dashVm, smartVm = smartVm)
+                }
+                composable(Screen.History.route) {
+                    HistoryScreen(historyVm = historyVm)
                 }
             }
         }
