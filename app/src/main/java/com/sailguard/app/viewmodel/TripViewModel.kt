@@ -7,6 +7,7 @@ import com.sailguard.app.data.model.SailyPlan
 import com.sailguard.app.data.model.TripConfig
 import com.sailguard.app.data.model.UsageStyle
 import com.sailguard.app.data.repository.PlanRepository
+import com.sailguard.app.data.repository.Region
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -21,7 +22,8 @@ data class TripSetupState(
     val selectedPlan: SailyPlan?  = null,
     val availablePlans: List<SailyPlan> = emptyList(),
     val tripStarted: Boolean   = false,
-    val activeTrip: TripConfig? = null
+    val activeTrip: TripConfig? = null,
+    val selectedRegion: Region? = null
 )
 
 class TripViewModel : ViewModel() {
@@ -41,6 +43,20 @@ class TripViewModel : ViewModel() {
         _state.value  = _state.value.copy(
             destination    = country,
             flag           = flag,
+            selectedRegion = null,
+            availablePlans = plans,
+            suggestedPlan  = suggested,
+            selectedPlan   = suggested
+        )
+    }
+
+    fun setRegion(region: Region) {
+        val plans     = PlanRepository.getRegionalPlans(region)
+        val suggested = plans.filter { !it.isUnlimited }.minByOrNull { it.priceUSD }
+        _state.value  = _state.value.copy(
+            destination    = PlanRepository.regionDisplayName(region),
+            flag           = region.emoji,
+            selectedRegion = region,
             availablePlans = plans,
             suggestedPlan  = suggested,
             selectedPlan   = suggested
@@ -48,8 +64,12 @@ class TripViewModel : ViewModel() {
     }
 
     fun setDuration(days: Int) {
-        val suggested = PlanRepository.suggestPlan(_state.value.destination, days, _state.value.usageStyle)
-        _state.value  = _state.value.copy(
+        val s         = _state.value
+        val suggested = if (s.selectedRegion != null)
+            s.availablePlans.filter { !it.isUnlimited }.minByOrNull { it.priceUSD }
+        else
+            PlanRepository.suggestPlan(s.destination, days, s.usageStyle)
+        _state.value  = s.copy(
             durationDays  = days,
             suggestedPlan = suggested,
             selectedPlan  = suggested
@@ -57,8 +77,12 @@ class TripViewModel : ViewModel() {
     }
 
     fun setUsageStyle(style: UsageStyle) {
-        val suggested = PlanRepository.suggestPlan(_state.value.destination, _state.value.durationDays, style)
-        _state.value  = _state.value.copy(
+        val s         = _state.value
+        val suggested = if (s.selectedRegion != null)
+            s.availablePlans.filter { !it.isUnlimited }.minByOrNull { it.priceUSD }
+        else
+            PlanRepository.suggestPlan(s.destination, s.durationDays, style)
+        _state.value  = s.copy(
             usageStyle    = style,
             suggestedPlan = suggested,
             selectedPlan  = suggested

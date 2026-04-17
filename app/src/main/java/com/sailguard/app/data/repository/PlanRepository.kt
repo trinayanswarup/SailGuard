@@ -19,48 +19,53 @@ object PlanRepository {
 
     private data class TierDef(
         val dataPlans: List<Pair<Double, Double>>,
-        val unlimitedBase15d: Double
+        val unlimitedBase15d: Double,
+        val unlimitedBase30d: Double = kotlin.math.round(unlimitedBase15d * 1.80 * 100) / 100.0,
+        val unlimitedBase90d: Double = kotlin.math.round(unlimitedBase15d * 4.50 * 100) / 100.0
     )
 
-    private val T_BALTIC = TierDef(
+    // Unlimited 15d prices are always higher than the most expensive fixed plan in each tier.
+    // Europe and Global carry explicit 30d/90d prices; all others derive them via the 1.80×/4.50× multipliers.
+
+    private val T_BALTIC = TierDef(                                    // max fixed: 20GB $29.99
         listOf(1.0 to 3.99, 3.0 to 7.99, 5.0 to 11.99, 10.0 to 19.99, 20.0 to 29.99),
-        unlimitedBase15d = 18.99)
+        unlimitedBase15d = 34.99)
 
-    private val T_E_EU = TierDef(
+    private val T_E_EU = TierDef(                                      // max fixed: 20GB $42.99
         listOf(1.0 to 4.49, 3.0 to 9.99, 5.0 to 15.99, 10.0 to 27.99, 20.0 to 42.99),
-        unlimitedBase15d = 29.99)
+        unlimitedBase15d = 49.99)
 
-    private val T_EUROPE = TierDef(
+    private val T_EUROPE = TierDef(                                    // max fixed: 50GB $95.99
         listOf(1.0 to 4.99, 3.0 to 12.49, 5.0 to 19.49, 10.0 to 35.99, 50.0 to 95.99),
-        unlimitedBase15d = 49.99)
+        unlimitedBase15d = 59.99, unlimitedBase30d = 109.99, unlimitedBase90d = 289.99)
 
-    private val T_UK = TierDef(
+    private val T_UK = TierDef(                                        // max fixed: 20GB $59.99
         listOf(1.0 to 5.99, 3.0 to 14.99, 5.0 to 22.99, 10.0 to 39.99, 20.0 to 59.99),
-        unlimitedBase15d = 54.99)
+        unlimitedBase15d = 64.99)
 
-    private val T_AS_CHE = TierDef(
+    private val T_AS_CHE = TierDef(                                    // max fixed: 20GB $44.99
         listOf(1.0 to 4.99, 3.0 to 10.99, 5.0 to 16.99, 10.0 to 28.99, 20.0 to 44.99),
-        unlimitedBase15d = 32.99)
-
-    private val T_AS_MID = TierDef(
-        listOf(1.0 to 6.49, 3.0 to 14.99, 5.0 to 23.99, 10.0 to 42.99, 20.0 to 59.99),
         unlimitedBase15d = 49.99)
 
-    private val T_AS_PRE = TierDef(
+    private val T_AS_MID = TierDef(                                    // max fixed: 20GB $59.99
+        listOf(1.0 to 6.49, 3.0 to 14.99, 5.0 to 23.99, 10.0 to 42.99, 20.0 to 59.99),
+        unlimitedBase15d = 64.99)
+
+    private val T_AS_PRE = TierDef(                                    // max fixed: 20GB $64.99
         listOf(1.0 to 7.99, 3.0 to 17.99, 5.0 to 28.99, 10.0 to 46.99, 20.0 to 64.99),
         unlimitedBase15d = 69.99)
 
-    private val T_AM_N = TierDef(
+    private val T_AM_N = TierDef(                                      // max fixed: 20GB $66.99
         listOf(1.0 to 8.99, 3.0 to 19.99, 5.0 to 33.99, 10.0 to 49.99, 20.0 to 66.99),
         unlimitedBase15d = 89.99)
 
-    private val T_AM_L = TierDef(
+    private val T_AM_L = TierDef(                                      // max fixed: 20GB $61.99
         listOf(1.0 to 6.99, 3.0 to 15.99, 5.0 to 25.99, 10.0 to 44.99, 20.0 to 61.99),
         unlimitedBase15d = 64.99)
 
-    private val T_GLOBAL = TierDef(
+    private val T_GLOBAL = TierDef(                                    // max fixed: 20GB $66.99
         listOf(1.0 to 8.99, 3.0 to 19.99, 5.0 to 33.99, 10.0 to 49.99, 20.0 to 66.99),
-        unlimitedBase15d = 89.99)
+        unlimitedBase15d = 89.99, unlimitedBase30d = 149.99, unlimitedBase90d = 399.99)
 
     // ── Country master list ───────────────────────────────────────────────────
 
@@ -212,6 +217,26 @@ object PlanRepository {
 
     fun regionForCountry(name: String): Region = regionByCountry[name] ?: Region.GLOBAL
 
+    fun regionDisplayName(region: Region): String =
+        if (region == Region.GLOBAL) region.displayName else "${region.displayName} Regional"
+
+    private val regionalPlans: Map<Region, List<SailyPlan>> = mapOf(
+        Region.EUROPE   to buildRegionalPlans("eu", Region.EUROPE,
+            listOf(1.0 to 4.99, 3.0 to 12.49, 5.0 to 19.49, 10.0 to 35.99, 50.0 to 95.99),
+            unlimitedBase = 59.99, unlimited30d = 109.99, unlimited90d = 289.99),
+        Region.ASIA     to buildRegionalPlans("as", Region.ASIA,
+            listOf(1.0 to 5.99, 3.0 to 14.99, 5.0 to 22.99, 10.0 to 39.99, 20.0 to 64.99),
+            unlimitedBase = 74.99, unlimited30d = 129.99, unlimited90d = 319.99),
+        Region.AMERICAS to buildRegionalPlans("am", Region.AMERICAS,
+            listOf(1.0 to 6.99, 3.0 to 16.99, 5.0 to 24.99, 10.0 to 44.99, 20.0 to 74.99),
+            unlimitedBase = 79.99, unlimited30d = 139.99, unlimited90d = 349.99),
+        Region.GLOBAL   to buildRegionalPlans("gl", Region.GLOBAL,
+            listOf(1.0 to 8.99, 3.0 to 19.99, 5.0 to 33.99, 10.0 to 49.99, 20.0 to 66.99),
+            unlimitedBase = 89.99, unlimited30d = 149.99, unlimited90d = 399.99)
+    )
+
+    fun getRegionalPlans(region: Region): List<SailyPlan> = regionalPlans[region] ?: emptyList()
+
     fun countriesInRegion(region: Region): List<CountryInfo> =
         allEntries.filter { it.region == region }.map { it.info }.sortedBy { it.name }
 
@@ -250,6 +275,45 @@ object PlanRepository {
 
     // ── Private helpers ───────────────────────────────────────────────────────
 
+    private fun buildRegionalPlans(
+        code:          String,
+        region:        Region,
+        dataPlans:     List<Pair<Double, Double>>,
+        unlimitedBase: Double?,
+        unlimited30d:  Double? = unlimitedBase?.let { kotlin.math.round(it * 1.80 * 100) / 100.0 },
+        unlimited90d:  Double? = unlimitedBase?.let { kotlin.math.round(it * 4.50 * 100) / 100.0 }
+    ): List<SailyPlan> {
+        val name  = regionDisplayName(region)
+        val plans = dataPlans.mapIndexed { i, (gb, price) ->
+            SailyPlan(
+                id          = "$code-reg-$i",
+                country     = name,
+                countryCode = code.uppercase(),
+                dataGB      = gb,
+                validDays   = 30,
+                priceUSD    = price
+            )
+        }
+        if (unlimitedBase == null) return plans
+        val p30 = unlimited30d ?: (kotlin.math.round(unlimitedBase * 1.80 * 100) / 100.0)
+        val p90 = unlimited90d ?: (kotlin.math.round(unlimitedBase * 4.50 * 100) / 100.0)
+        return plans + SailyPlan(
+            id          = "$code-reg-u",
+            country     = name,
+            countryCode = code.uppercase(),
+            dataGB      = Double.MAX_VALUE,
+            validDays   = 15,
+            priceUSD    = unlimitedBase,
+            isUnlimited = true,
+            unlimitedPrices = mapOf(
+                7  to kotlin.math.round(unlimitedBase * 0.67 * 100) / 100.0,
+                15 to unlimitedBase,
+                30 to p30,
+                90 to p90
+            )
+        )
+    }
+
     private fun buildPlans(country: String, code: String, tier: TierDef): List<SailyPlan> {
         val dataPlans = tier.dataPlans.mapIndexed { i, (gb, price) ->
             SailyPlan(
@@ -268,7 +332,13 @@ object PlanRepository {
             dataGB      = Double.MAX_VALUE,
             validDays   = 15,
             priceUSD    = tier.unlimitedBase15d,
-            isUnlimited = true
+            isUnlimited = true,
+            unlimitedPrices = mapOf(
+                7  to kotlin.math.round(tier.unlimitedBase15d * 0.67 * 100) / 100.0,
+                15 to tier.unlimitedBase15d,
+                30 to tier.unlimitedBase30d,
+                90 to tier.unlimitedBase90d
+            )
         )
         return dataPlans + unlimited
     }

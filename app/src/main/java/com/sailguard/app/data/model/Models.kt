@@ -10,7 +10,8 @@ data class SailyPlan(
     val validDays: Int,       // base validity; unlimited plans default to 15
     val priceUSD: Double,     // for unlimited = 15-day base price
     val network: String = "4G/LTE",
-    val isUnlimited: Boolean = false
+    val isUnlimited: Boolean = false,
+    val unlimitedPrices: Map<Int, Double> = emptyMap()
 )
 
 enum class UsageStyle(

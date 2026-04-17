@@ -217,7 +217,8 @@ private fun Step1Content(
             SectionLabel("Destination")
             DestinationPicker(
                 selectedDestination = state.destination,
-                onSelect            = { vm.setDestination(it) }
+                onSelect            = { vm.setDestination(it) },
+                onSelectRegion      = { vm.setRegion(it) }
             )
         }
 
@@ -295,9 +296,11 @@ private fun Step1Content(
 @Composable
 private fun DestinationPicker(
     selectedDestination: String,
-    onSelect: (String) -> Unit
+    onSelect:            (String) -> Unit,
+    onSelectRegion:      (Region) -> Unit
 ) {
-    var searchText     by remember { mutableStateOf(if (selectedDestination.isNotEmpty()) selectedDestination else "") }
+    val isRegionDest   = Region.entries.any { PlanRepository.regionDisplayName(it) == selectedDestination }
+    var searchText     by remember { mutableStateOf(if (selectedDestination.isNotEmpty() && !isRegionDest) selectedDestination else "") }
     var expandedRegion by remember { mutableStateOf<Region?>(null) }
 
     Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
@@ -368,6 +371,8 @@ private fun DestinationPicker(
                     region               = region,
                     isExpanded           = expandedRegion == region,
                     selectedDestination  = selectedDestination,
+                    isRegionSelected     = selectedDestination == PlanRepository.regionDisplayName(region),
+                    onSelectRegion       = { onSelectRegion(region) },
                     onToggle             = {
                         expandedRegion = if (expandedRegion == region) null else region
                     },
@@ -386,52 +391,72 @@ private fun RegionCard(
     region:              Region,
     isExpanded:          Boolean,
     selectedDestination: String,
+    isRegionSelected:    Boolean,
+    onSelectRegion:      () -> Unit,
     onToggle:            () -> Unit,
     onSelectCountry:     (String) -> Unit
 ) {
-    val countries      = PlanRepository.countriesInRegion(region)
-    val hasSelected    = countries.any { it.name == selectedDestination }
+    val countries   = PlanRepository.countriesInRegion(region)
+    val hasCountry  = countries.any { it.name == selectedDestination }
+    val highlighted = isRegionSelected || hasCountry
 
     Card(
         colors    = CardDefaults.cardColors(
-            containerColor = if (hasSelected) TealPrimary.copy(alpha = 0.06f) else AppSurface),
+            containerColor = if (highlighted) TealPrimary.copy(alpha = 0.06f) else AppSurface),
         shape     = RoundedCornerShape(14.dp),
-        border    = BorderStroke(1.dp, if (hasSelected) TealPrimary.copy(alpha = 0.5f) else CardBorder),
+        border    = BorderStroke(1.dp, if (highlighted) TealPrimary.copy(alpha = 0.5f) else CardBorder),
         elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
     ) {
         Column {
-            // Region header row
+            // Header: left area selects the whole region; right chevron expands country list
             Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .clickable(onClick = onToggle)
-                    .padding(14.dp),
+                modifier              = Modifier.fillMaxWidth().padding(14.dp),
                 horizontalArrangement = Arrangement.spacedBy(12.dp),
                 verticalAlignment     = Alignment.CenterVertically
             ) {
-                Text(region.emoji, fontSize = 26.sp)
-                Column(Modifier.weight(1f)) {
-                    Text(region.displayName,
-                         style      = MaterialTheme.typography.titleSmall,
-                         color      = TextPrimary,
-                         fontWeight = FontWeight.SemiBold)
-                    Text(region.description,
-                         style = MaterialTheme.typography.labelSmall, color = TextSecondary)
-                }
-                if (hasSelected) {
-                    val sel = countries.find { it.name == selectedDestination }
-                    if (sel != null) {
-                        Text("${sel.flag} ${sel.name}",
-                             style = MaterialTheme.typography.labelSmall, color = TealPrimary)
-                        Spacer(Modifier.width(6.dp))
+                Row(
+                    modifier              = Modifier.weight(1f).clickable(onClick = onSelectRegion),
+                    horizontalArrangement = Arrangement.spacedBy(12.dp),
+                    verticalAlignment     = Alignment.CenterVertically
+                ) {
+                    Text(region.emoji, fontSize = 26.sp)
+                    Column {
+                        Text(region.displayName,
+                             style      = MaterialTheme.typography.titleSmall,
+                             color      = if (isRegionSelected) TealPrimary else TextPrimary,
+                             fontWeight = FontWeight.SemiBold)
+                        Text(region.description,
+                             style = MaterialTheme.typography.labelSmall, color = TextSecondary)
                     }
                 }
-                Icon(
-                    imageVector        = if (isExpanded) Icons.Filled.ExpandLess else Icons.Filled.ExpandMore,
-                    contentDescription = null,
-                    tint               = TextSecondary,
-                    modifier           = Modifier.size(20.dp)
-                )
+                when {
+                    isRegionSelected -> {
+                        Surface(shape = RoundedCornerShape(6.dp), color = TealPrimary.copy(alpha = 0.15f)) {
+                            Text("Region Plan",
+                                 modifier   = Modifier.padding(horizontal = 6.dp, vertical = 3.dp),
+                                 style      = MaterialTheme.typography.labelSmall,
+                                 color      = TealPrimary,
+                                 fontWeight = FontWeight.Medium)
+                        }
+                        Spacer(Modifier.width(4.dp))
+                    }
+                    hasCountry -> {
+                        val sel = countries.find { it.name == selectedDestination }
+                        if (sel != null) {
+                            Text("${sel.flag} ${sel.name}",
+                                 style = MaterialTheme.typography.labelSmall, color = TealPrimary)
+                            Spacer(Modifier.width(6.dp))
+                        }
+                    }
+                }
+                IconButton(onClick = onToggle, modifier = Modifier.size(28.dp)) {
+                    Icon(
+                        imageVector        = if (isExpanded) Icons.Filled.ExpandLess else Icons.Filled.ExpandMore,
+                        contentDescription = null,
+                        tint               = TextSecondary,
+                        modifier           = Modifier.size(20.dp)
+                    )
+                }
             }
 
             // Expanded country list
@@ -775,7 +800,7 @@ private fun SailyPlanCard(
 ) {
     var selectedDays by remember { mutableStateOf(15) }
     val displayPrice = if (plan.isUnlimited)
-        PlanRepository.unlimitedPriceForDays(plan.priceUSD, selectedDays)
+        plan.unlimitedPrices[selectedDays] ?: PlanRepository.unlimitedPriceForDays(plan.priceUSD, selectedDays)
     else plan.priceUSD
 
     val borderColor    = when {
