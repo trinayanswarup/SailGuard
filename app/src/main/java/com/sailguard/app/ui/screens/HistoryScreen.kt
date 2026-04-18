@@ -39,6 +39,7 @@ import com.sailguard.app.ui.theme.AppSurface
 import com.sailguard.app.ui.theme.CardBorder
 import com.sailguard.app.ui.theme.ErrorRed
 import com.sailguard.app.ui.theme.SuccessGreen
+import com.sailguard.app.ui.theme.NearBlack
 import com.sailguard.app.ui.theme.TealPrimary
 import com.sailguard.app.ui.theme.TextPrimary
 import com.sailguard.app.ui.theme.TextSecondary
@@ -65,7 +66,7 @@ fun HistoryScreen(historyVm: HistoryViewModel) {
             horizontalArrangement = Arrangement.spacedBy(10.dp)
         ) {
             Icon(Icons.Filled.History, contentDescription = null,
-                 tint = TealPrimary, modifier = Modifier.size(24.dp))
+                 tint = NearBlack, modifier = Modifier.size(24.dp))
             Column {
                 Text("Trip History",
                      style = MaterialTheme.typography.headlineSmall, color = TextPrimary)
@@ -179,7 +180,7 @@ private fun TripHistoryCard(trip: TripHistoryEntity) {
                     Text(
                         "$${"%.2f".format(trip.totalCost)}",
                         style      = MaterialTheme.typography.labelSmall,
-                        color      = TealPrimary,
+                        color      = NearBlack,
                         fontWeight = FontWeight.SemiBold
                     )
                 }

@@ -46,6 +46,8 @@ import com.sailguard.app.ui.theme.CardBorder
 import com.sailguard.app.ui.theme.ErrorRed
 import com.sailguard.app.ui.theme.InfoBlue
 import com.sailguard.app.ui.theme.SuccessGreen
+import com.sailguard.app.ui.theme.NearBlack
+import com.sailguard.app.ui.theme.SailyYellow
 import com.sailguard.app.ui.theme.TealPrimary
 import com.sailguard.app.ui.theme.TextPrimary
 import com.sailguard.app.ui.theme.TextSecondary
@@ -101,7 +103,7 @@ fun AlertsScreen(
                     .background(
                         if (allAlerts.any { it.severity == AlertSeverity.CRITICAL }) ErrorRed
                         else if (allAlerts.any { it.severity == AlertSeverity.WARNING }) WarningAmber
-                        else TealPrimary,
+                        else SuccessGreen,
                         CircleShape
                     ),
                 contentAlignment = Alignment.Center
@@ -119,7 +121,7 @@ fun AlertsScreen(
 
         // ── Filter chips ──────────────────────────────────────────────────────
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            FilterChip("All",      filter == null,                         TealPrimary)  { filter = null }
+            FilterChip("All",      filter == null, SailyYellow, selectedTextColor = NearBlack) { filter = null }
             FilterChip("Info",     filter == AlertSeverity.INFO,           InfoBlue)     { filter = AlertSeverity.INFO }
             FilterChip("Warning",  filter == AlertSeverity.WARNING,        WarningAmber) { filter = AlertSeverity.WARNING }
             FilterChip("Critical", filter == AlertSeverity.CRITICAL,       ErrorRed)     { filter = AlertSeverity.CRITICAL }
@@ -211,10 +213,11 @@ private fun AlertCard(alert: Alert) {
 
 @Composable
 private fun FilterChip(
-    label: String,
-    selected: Boolean,
-    color: Color,
-    onClick: () -> Unit
+    label:             String,
+    selected:          Boolean,
+    color:             Color,
+    selectedTextColor: Color = Color.White,
+    onClick:           () -> Unit
 ) {
     Surface(
         modifier = Modifier.clickable(onClick = onClick),
@@ -227,7 +230,7 @@ private fun FilterChip(
             text       = label,
             modifier   = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
             style      = MaterialTheme.typography.labelSmall,
-            color      = if (selected) Color.White else TextSecondary,
+            color      = if (selected) selectedTextColor else TextSecondary,
             fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Normal
         )
     }

@@ -49,6 +49,8 @@ import com.sailguard.app.ui.theme.AppSurface2
 import com.sailguard.app.ui.theme.CardBorder
 import com.sailguard.app.ui.theme.ErrorRed
 import com.sailguard.app.ui.theme.SuccessGreen
+import com.sailguard.app.ui.theme.NearBlack
+import com.sailguard.app.ui.theme.SailyYellow
 import com.sailguard.app.ui.theme.TealPrimary
 import com.sailguard.app.ui.theme.TextPrimary
 import com.sailguard.app.ui.theme.TextSecondary
@@ -88,7 +90,7 @@ fun SmartModeScreen(vm: SmartModeViewModel) {
                 Text(
                     if (state.isSmartModeOn) "ON" else "OFF",
                     style      = MaterialTheme.typography.titleSmall,
-                    color      = if (state.isSmartModeOn) TealPrimary else TextSecondary,
+                    color      = if (state.isSmartModeOn) NearBlack else TextSecondary,
                     fontWeight = FontWeight.Bold
                 )
                 Switch(
@@ -96,7 +98,7 @@ fun SmartModeScreen(vm: SmartModeViewModel) {
                     onCheckedChange = { vm.setSmartMode(it) },
                     colors          = SwitchDefaults.colors(
                         checkedThumbColor   = Color.White,
-                        checkedTrackColor   = TealPrimary,
+                        checkedTrackColor   = SailyYellow,
                         uncheckedThumbColor = TextSecondary,
                         uncheckedTrackColor = AppSurface2
                     )
@@ -251,7 +253,7 @@ fun SmartModeScreen(vm: SmartModeViewModel) {
                             horizontalArrangement = Arrangement.spacedBy(10.dp)
                         ) {
                             Icon(Icons.Filled.Info, contentDescription = null,
-                                 tint = TealPrimary, modifier = Modifier.size(16.dp))
+                                 tint = NearBlack, modifier = Modifier.size(16.dp))
                             Text(reason, style = MaterialTheme.typography.bodySmall,
                                  color = TextPrimary)
                         }
@@ -321,13 +323,13 @@ private fun SmartTip(text: String) {
         verticalAlignment     = Alignment.Top,
         horizontalArrangement = Arrangement.spacedBy(8.dp)
     ) {
-        Text("•", color = TealPrimary, style = MaterialTheme.typography.bodySmall)
+        Text("•", color = SailyYellow, style = MaterialTheme.typography.bodySmall)
         Text(text, style = MaterialTheme.typography.bodySmall, color = TextSecondary)
     }
 }
 
 private fun battColor(level: Int, charging: Boolean): Color = when {
-    charging    -> TealPrimary
+    charging    -> SuccessGreen
     level < 20  -> ErrorRed
     level < 40  -> WarningAmber
     else        -> SuccessGreen

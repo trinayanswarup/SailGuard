@@ -8,6 +8,9 @@ import androidx.compose.material.icons.filled.History
 import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.ui.graphics.vector.ImageVector
 
+const val SPLASH_ROUTE = "splash"
+const val CART_ROUTE   = "cart"
+
 sealed class Screen(val route: String, val label: String, val icon: ImageVector) {
     object Setup     : Screen("setup",     "Setup",     Icons.Filled.FlightTakeoff)
     object Dashboard : Screen("dashboard", "Dashboard", Icons.Filled.Dashboard)

@@ -6,11 +6,11 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.graphics.Color
 
 private val SailGuardColorScheme = lightColorScheme(
-    primary              = TealPrimary,
-    onPrimary            = Color.White,
-    primaryContainer     = TealSurface,
+    primary              = SailyYellow,
+    onPrimary            = TextPrimary,
+    primaryContainer     = SailyYellow.copy(alpha = 0.15f),
     onPrimaryContainer   = TextPrimary,
-    secondary            = TealLight,
+    secondary            = NearBlack,
     onSecondary          = Color.White,
     background           = AppBackground,
     onBackground         = TextPrimary,

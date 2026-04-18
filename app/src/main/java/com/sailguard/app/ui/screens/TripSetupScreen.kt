@@ -77,8 +77,9 @@ import com.sailguard.app.ui.theme.AppSurface
 import com.sailguard.app.ui.theme.AppSurface2
 import com.sailguard.app.ui.theme.CardBorder
 import com.sailguard.app.ui.theme.ErrorRed
+import com.sailguard.app.ui.theme.NearBlack
+import com.sailguard.app.ui.theme.SailyYellow
 import com.sailguard.app.ui.theme.SuccessGreen
-import com.sailguard.app.ui.theme.TealPrimary
 import com.sailguard.app.ui.theme.TextPrimary
 import com.sailguard.app.ui.theme.TextSecondary
 import com.sailguard.app.ui.theme.WarningAmber
@@ -89,10 +90,10 @@ import com.sailguard.app.viewmodel.UsageViewModel
 
 @Composable
 fun TripSetupScreen(
-    vm:            TripViewModel,
-    usageVm:       UsageViewModel,
-    historyVm:     HistoryViewModel,
-    onTripStarted: () -> Unit
+    vm:         TripViewModel,
+    usageVm:    UsageViewModel,
+    historyVm:  HistoryViewModel,
+    onGoToCart: () -> Unit
 ) {
     val state   by vm.state.collectAsState()
     val sliders by usageVm.sliders.collectAsState()
@@ -162,19 +163,19 @@ fun TripSetupScreen(
                 Button(
                     onClick  = {
                         if (step < 3) step++
-                        else { vm.startTrip(); onTripStarted() }
+                        else onGoToCart()
                     },
                     enabled  = canAdvance,
                     modifier = Modifier.weight(if (step > 1) 2f else 1f).height(48.dp),
                     shape    = RoundedCornerShape(12.dp),
                     colors   = ButtonDefaults.buttonColors(
-                        containerColor         = TealPrimary,
+                        containerColor         = SailyYellow,
                         disabledContainerColor = AppSurface2
                     )
                 ) {
                     Text(
-                        text       = if (step < 3) "Next →" else "Start Trip",
-                        color      = if (canAdvance) Color.White else TextSecondary,
+                        text       = if (step < 3) "Next →" else "Review Order →",
+                        color      = if (canAdvance) Color(0xFF0D0D0D) else TextSecondary,
                         fontWeight = FontWeight.SemiBold
                     )
                 }
@@ -202,7 +203,7 @@ private fun Step1Content(
         Column {
             Text("⛵ SailGuard",
                  style         = MaterialTheme.typography.titleSmall,
-                 color         = TealPrimary,
+                 color         = NearBlack,
                  fontWeight    = FontWeight.Bold,
                  letterSpacing = 1.sp)
             Spacer(Modifier.height(4.dp))
@@ -212,7 +213,7 @@ private fun Step1Content(
                  style = MaterialTheme.typography.bodyMedium,    color = TextSecondary)
         }
 
-        // ── New destination picker ────────────────────────────────────────────
+        // ── Destination picker ────────────────────────────────────────────────
         Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
             SectionLabel("Destination")
             DestinationPicker(
@@ -239,7 +240,7 @@ private fun Step1Content(
                         onClick  = { if (state.durationDays > 1) vm.setDuration(state.durationDays - 1) },
                         modifier = Modifier.size(36.dp)
                     ) {
-                        Icon(Icons.Filled.Remove, contentDescription = "Decrease", tint = TealPrimary)
+                        Icon(Icons.Filled.Remove, contentDescription = "Decrease", tint = SailyYellow)
                     }
                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
                         Text("${state.durationDays}",
@@ -252,7 +253,7 @@ private fun Step1Content(
                         onClick  = { if (state.durationDays < 60) vm.setDuration(state.durationDays + 1) },
                         modifier = Modifier.size(36.dp)
                     ) {
-                        Icon(Icons.Filled.Add, contentDescription = "Increase", tint = TealPrimary)
+                        Icon(Icons.Filled.Add, contentDescription = "Increase", tint = SailyYellow)
                     }
                 }
             }
@@ -267,7 +268,7 @@ private fun Step1Content(
                     Surface(
                         modifier = Modifier.weight(1f).clickable { vm.setUsageStyle(style) },
                         shape    = RoundedCornerShape(12.dp),
-                        color    = if (selected) TealPrimary else AppSurface,
+                        color    = if (selected) SailyYellow else AppSurface,
                         border   = if (selected) null else BorderStroke(1.dp, CardBorder)
                     ) {
                         Column(
@@ -277,11 +278,11 @@ private fun Step1Content(
                         ) {
                             Text(style.label,
                                  style      = MaterialTheme.typography.titleSmall,
-                                 color      = if (selected) Color.White else TextPrimary,
+                                 color      = if (selected) NearBlack else TextPrimary,
                                  fontWeight = FontWeight.SemiBold)
                             Text("${"%.0f".format(style.dailyGb * 1000)} MB/day",
                                  style = MaterialTheme.typography.labelSmall,
-                                 color = if (selected) Color.White.copy(alpha = 0.85f) else TextSecondary)
+                                 color = if (selected) NearBlack.copy(alpha = 0.7f) else TextSecondary)
                         }
                     }
                 }
@@ -315,7 +316,7 @@ private fun DestinationPicker(
             colors        = OutlinedTextFieldDefaults.colors(
                 focusedTextColor        = TextPrimary,
                 unfocusedTextColor      = TextPrimary,
-                focusedBorderColor      = TealPrimary,
+                focusedBorderColor      = SailyYellow,
                 unfocusedBorderColor    = CardBorder,
                 focusedContainerColor   = AppSurface,
                 unfocusedContainerColor = AppSurface
@@ -357,7 +358,7 @@ private fun DestinationPicker(
                                 if (country.name == selectedDestination) {
                                     Spacer(Modifier.weight(1f))
                                     Icon(Icons.Filled.Check, contentDescription = null,
-                                         tint = TealPrimary, modifier = Modifier.size(16.dp))
+                                         tint = SailyYellow, modifier = Modifier.size(16.dp))
                                 }
                             }
                         }
@@ -402,9 +403,9 @@ private fun RegionCard(
 
     Card(
         colors    = CardDefaults.cardColors(
-            containerColor = if (highlighted) TealPrimary.copy(alpha = 0.06f) else AppSurface),
+            containerColor = if (highlighted) SailyYellow.copy(alpha = 0.12f) else AppSurface),
         shape     = RoundedCornerShape(14.dp),
-        border    = BorderStroke(1.dp, if (highlighted) TealPrimary.copy(alpha = 0.5f) else CardBorder),
+        border    = BorderStroke(1.dp, if (highlighted) SailyYellow else CardBorder),
         elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
     ) {
         Column {
@@ -423,7 +424,7 @@ private fun RegionCard(
                     Column {
                         Text(region.displayName,
                              style      = MaterialTheme.typography.titleSmall,
-                             color      = if (isRegionSelected) TealPrimary else TextPrimary,
+                             color      = if (isRegionSelected) NearBlack else TextPrimary,
                              fontWeight = FontWeight.SemiBold)
                         Text(region.description,
                              style = MaterialTheme.typography.labelSmall, color = TextSecondary)
@@ -431,11 +432,11 @@ private fun RegionCard(
                 }
                 when {
                     isRegionSelected -> {
-                        Surface(shape = RoundedCornerShape(6.dp), color = TealPrimary.copy(alpha = 0.15f)) {
+                        Surface(shape = RoundedCornerShape(6.dp), color = SailyYellow) {
                             Text("Region Plan",
                                  modifier   = Modifier.padding(horizontal = 6.dp, vertical = 3.dp),
                                  style      = MaterialTheme.typography.labelSmall,
-                                 color      = TealPrimary,
+                                 color      = NearBlack,
                                  fontWeight = FontWeight.Medium)
                         }
                         Spacer(Modifier.width(4.dp))
@@ -444,7 +445,7 @@ private fun RegionCard(
                         val sel = countries.find { it.name == selectedDestination }
                         if (sel != null) {
                             Text("${sel.flag} ${sel.name}",
-                                 style = MaterialTheme.typography.labelSmall, color = TealPrimary)
+                                 style = MaterialTheme.typography.labelSmall, color = NearBlack)
                             Spacer(Modifier.width(6.dp))
                         }
                     }
@@ -475,7 +476,7 @@ private fun RegionCard(
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .background(
-                                    if (isSelected) TealPrimary.copy(alpha = 0.10f)
+                                    if (isSelected) SailyYellow.copy(alpha = 0.20f)
                                     else Color.Transparent,
                                     RoundedCornerShape(8.dp)
                                 )
@@ -487,11 +488,11 @@ private fun RegionCard(
                             Text(country.flag, fontSize = 18.sp)
                             Text(country.name,
                                  style    = MaterialTheme.typography.bodyMedium,
-                                 color    = if (isSelected) TealPrimary else TextPrimary,
+                                 color    = if (isSelected) NearBlack else TextPrimary,
                                  modifier = Modifier.weight(1f))
                             if (isSelected) {
                                 Icon(Icons.Filled.Check, contentDescription = null,
-                                     tint = TealPrimary, modifier = Modifier.size(16.dp))
+                                     tint = SailyYellow, modifier = Modifier.size(16.dp))
                             }
                         }
                     }
@@ -737,9 +738,9 @@ private fun SmartHistoryCard(
     val sliderWeight = 100 - histWeight
 
     Card(
-        colors = CardDefaults.cardColors(containerColor = TealPrimary.copy(alpha = 0.07f)),
+        colors = CardDefaults.cardColors(containerColor = SailyYellow.copy(alpha = 0.10f)),
         shape  = RoundedCornerShape(14.dp),
-        border = BorderStroke(1.dp, TealPrimary.copy(alpha = 0.35f))
+        border = BorderStroke(1.dp, SailyYellow.copy(alpha = 0.5f))
     ) {
         Column(
             modifier            = Modifier.padding(14.dp),
@@ -748,7 +749,7 @@ private fun SmartHistoryCard(
             Text(
                 "Based on your usage history + current settings, we recommend $recLabel",
                 style      = MaterialTheme.typography.titleSmall,
-                color      = TealPrimary,
+                color      = NearBlack,
                 fontWeight = FontWeight.SemiBold
             )
             Column(verticalArrangement = Arrangement.spacedBy(3.dp)) {
@@ -804,14 +805,14 @@ private fun SailyPlanCard(
     else plan.priceUSD
 
     val borderColor    = when {
-        isSelected   -> TealPrimary
-        isBestChoice -> TealPrimary.copy(alpha = 0.6f)
+        isSelected   -> SailyYellow
+        isBestChoice -> SailyYellow.copy(alpha = 0.6f)
         else         -> CardBorder
     }
     val borderWidth    = if (isSelected || isBestChoice) 2.dp else 1.dp
     val containerColor = when {
-        isBestChoice && !isSelected -> Color(0xFF0C1F1C)
-        isSelected                  -> TealPrimary.copy(alpha = 0.07f)
+        isBestChoice && !isSelected -> NearBlack
+        isSelected                  -> SailyYellow.copy(alpha = 0.10f)
         else                        -> AppSurface
     }
     val textOnDark = isBestChoice && !isSelected
@@ -830,10 +831,10 @@ private fun SailyPlanCard(
             // ── Badges row ────────────────────────────────────────────────────
             Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                 if (isBestChoice) {
-                    PlanBadge("Best Choice", Color.White, TealPrimary)
+                    PlanBadge("Best Choice", NearBlack, SailyYellow)
                 }
                 if (isBlendMatch && !isBestChoice) {
-                    PlanBadge("History Pick", TealPrimary, TealPrimary.copy(alpha = 0.15f))
+                    PlanBadge("History Pick", NearBlack, SailyYellow.copy(alpha = 0.20f))
                 }
             }
 
@@ -853,7 +854,7 @@ private fun SailyPlanCard(
                     Text(
                         "$${"%.2f".format(displayPrice)}",
                         style      = MaterialTheme.typography.headlineSmall,
-                        color      = if (textOnDark) Color.White else TealPrimary,
+                        color      = if (textOnDark) Color.White else SailyYellow,
                         fontWeight = FontWeight.Bold
                     )
                     Text("USD",
@@ -870,14 +871,14 @@ private fun SailyPlanCard(
                         Surface(
                             modifier = Modifier.clickable { selectedDays = days },
                             shape    = RoundedCornerShape(6.dp),
-                            color    = if (active) TealPrimary else AppSurface2,
+                            color    = if (active) SailyYellow else AppSurface2,
                             border   = if (active) null else BorderStroke(1.dp, CardBorder)
                         ) {
                             Text(
                                 "${days}d",
                                 modifier   = Modifier.padding(horizontal = 10.dp, vertical = 4.dp),
                                 style      = MaterialTheme.typography.labelSmall,
-                                color      = if (active) Color.White else TextSecondary,
+                                color      = if (active) NearBlack else TextSecondary,
                                 fontWeight = if (active) FontWeight.SemiBold else FontWeight.Normal
                             )
                         }
@@ -902,13 +903,13 @@ private fun SailyPlanCard(
                     // 3% Saily credits badge
                     Surface(
                         shape = RoundedCornerShape(4.dp),
-                        color = if (textOnDark) TealPrimary.copy(0.3f) else TealPrimary.copy(0.12f)
+                        color = if (textOnDark) SailyYellow.copy(0.3f) else SailyYellow.copy(0.12f)
                     ) {
                         Text(
                             "3% Saily credits",
                             modifier   = Modifier.padding(horizontal = 6.dp, vertical = 3.dp),
                             style      = MaterialTheme.typography.labelSmall,
-                            color      = if (textOnDark) Color.White else TealPrimary,
+                            color      = if (textOnDark) Color.White else NearBlack,
                             fontWeight = FontWeight.Medium
                         )
                     }
@@ -918,7 +919,7 @@ private fun SailyPlanCard(
                 }
                 if (isSelected) {
                     Icon(Icons.Filled.Check, contentDescription = "Selected",
-                         tint = TealPrimary, modifier = Modifier.size(18.dp))
+                         tint = SailyYellow, modifier = Modifier.size(18.dp))
                 }
             }
         }
@@ -959,19 +960,19 @@ private fun WizardStepBar(currentStep: Int, modifier: Modifier = Modifier) {
                     modifier         = Modifier
                         .size(28.dp)
                         .background(
-                            if (isDone || isCurrent) TealPrimary else AppSurface,
+                            if (isDone || isCurrent) SailyYellow else AppSurface2,
                             CircleShape
                         ),
                     contentAlignment = Alignment.Center
                 ) {
                     if (isDone) {
                         Icon(Icons.Filled.Check, contentDescription = null,
-                             tint = Color.White, modifier = Modifier.size(14.dp))
+                             tint = NearBlack, modifier = Modifier.size(14.dp))
                     } else {
                         Text(
                             "$stepNum",
                             style      = MaterialTheme.typography.labelSmall,
-                            color      = if (isCurrent) Color.White else TextSecondary,
+                            color      = if (isCurrent) NearBlack else TextSecondary,
                             fontWeight = FontWeight.Bold
                         )
                     }
@@ -980,7 +981,7 @@ private fun WizardStepBar(currentStep: Int, modifier: Modifier = Modifier) {
                 Text(
                     label,
                     style      = MaterialTheme.typography.labelSmall,
-                    color      = if (stepNum <= currentStep) TealPrimary else TextSecondary,
+                    color      = if (stepNum <= currentStep) NearBlack else TextSecondary,
                     fontWeight = if (isCurrent) FontWeight.SemiBold else FontWeight.Normal
                 )
             }
@@ -991,7 +992,7 @@ private fun WizardStepBar(currentStep: Int, modifier: Modifier = Modifier) {
                         .weight(1f)
                         .padding(top = 13.dp)
                         .height(2.dp)
-                        .background(if (currentStep > stepNum) TealPrimary else CardBorder)
+                        .background(if (currentStep > stepNum) SailyYellow else CardBorder)
                 )
             }
         }
@@ -1030,7 +1031,7 @@ private fun UsageSliderRow(
         ) {
             Row(verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                Icon(icon, contentDescription = null, tint = TealPrimary, modifier = Modifier.size(20.dp))
+                Icon(icon, contentDescription = null, tint = SailyYellow, modifier = Modifier.size(20.dp))
                 Column {
                     Text(label,    style = MaterialTheme.typography.titleSmall, color = TextPrimary)
                     Text(subLabel, style = MaterialTheme.typography.labelSmall, color = TextSecondary)
@@ -1038,7 +1039,7 @@ private fun UsageSliderRow(
             }
             Column(horizontalAlignment = Alignment.End) {
                 Text("${"%.1f".format(hours)} hrs/day",
-                     style = MaterialTheme.typography.bodySmall, color = TealPrimary,
+                     style = MaterialTheme.typography.bodySmall, color = NearBlack,
                      fontWeight = FontWeight.SemiBold)
                 Text("~${"%.0f".format(hours * mbPerHr)} MB",
                      style = MaterialTheme.typography.labelSmall, color = TextSecondary)
@@ -1048,8 +1049,8 @@ private fun UsageSliderRow(
             value         = value,
             onValueChange = onChange,
             colors        = SliderDefaults.colors(
-                thumbColor         = TealPrimary,
-                activeTrackColor   = TealPrimary,
+                thumbColor         = SailyYellow,
+                activeTrackColor   = SailyYellow,
                 inactiveTrackColor = AppSurface2
             )
         )

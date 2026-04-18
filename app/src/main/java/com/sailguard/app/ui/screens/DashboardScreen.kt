@@ -44,8 +44,10 @@ import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.sailguard.app.ui.theme.SailyYellow
 import com.sailguard.app.data.model.NetworkStrength
 import com.sailguard.app.ui.theme.AppBackground
 import com.sailguard.app.ui.theme.AppSurface
@@ -63,9 +65,10 @@ import com.sailguard.app.viewmodel.TripViewModel
 
 @Composable
 fun DashboardScreen(
-    dashVm:    DashboardViewModel,
-    tripVm:    TripViewModel,
-    onEndTrip: () -> Unit = {}
+    dashVm:            DashboardViewModel,
+    tripVm:            TripViewModel,
+    onEndTrip:         () -> Unit = {},
+    onNavigateToSetup: () -> Unit = {}
 ) {
     val dashState by dashVm.state.collectAsState()
     val tripState by tripVm.state.collectAsState()
@@ -102,6 +105,49 @@ fun DashboardScreen(
 
     val trip = dashState.trip
 
+    if (trip == null) {
+        Box(
+            modifier         = Modifier.fillMaxSize().background(AppBackground),
+            contentAlignment = Alignment.Center
+        ) {
+            Column(
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.spacedBy(16.dp),
+                modifier            = Modifier.padding(32.dp)
+            ) {
+                Text("🌍", fontSize = 72.sp)
+                Text(
+                    text       = "No active trip",
+                    style      = MaterialTheme.typography.headlineSmall,
+                    color      = TextPrimary,
+                    fontWeight = FontWeight.Bold
+                )
+                Text(
+                    text      = "Set up a trip to start tracking your data usage",
+                    style     = MaterialTheme.typography.bodyMedium,
+                    color     = TextSecondary,
+                    textAlign = TextAlign.Center
+                )
+                androidx.compose.foundation.layout.Spacer(
+                    modifier = Modifier.padding(top = 8.dp)
+                )
+                Button(
+                    onClick = onNavigateToSetup,
+                    shape   = RoundedCornerShape(12.dp),
+                    colors  = ButtonDefaults.buttonColors(containerColor = SailyYellow)
+                ) {
+                    Text(
+                        text       = "Plan a Trip",
+                        color      = Color(0xFF0D0D0D),
+                        fontWeight = FontWeight.SemiBold,
+                        modifier   = Modifier.padding(horizontal = 16.dp, vertical = 4.dp)
+                    )
+                }
+            }
+        }
+        return
+    }
+
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -110,23 +156,6 @@ fun DashboardScreen(
             .padding(horizontal = 20.dp, vertical = 24.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
-        // ── Empty state ───────────────────────────────────────────────────────
-        if (trip == null) {
-            Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                Column(
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                    verticalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    Text("No Active Trip",
-                         style = MaterialTheme.typography.headlineSmall,
-                         color = TextPrimary)
-                    Text("Start a trip on the Setup tab to see your dashboard.",
-                         style = MaterialTheme.typography.bodyMedium,
-                         color = TextSecondary)
-                }
-            }
-            return@Column
-        }
 
         // ── Trip header ───────────────────────────────────────────────────────
         Row(verticalAlignment = Alignment.CenterVertically,
@@ -387,10 +416,10 @@ private fun DeviceCard(
 private fun gaugeColor(f: Float) = when {
     f >= 0.75f -> ErrorRed
     f >= 0.50f -> WarningAmber
-    else       -> TealPrimary
+    else       -> SuccessGreen
 }
 private fun battColor(level: Int, charging: Boolean) = when {
-    charging   -> TealPrimary
+    charging   -> SuccessGreen
     level < 20 -> ErrorRed
     level < 40 -> WarningAmber
     else       -> SuccessGreen

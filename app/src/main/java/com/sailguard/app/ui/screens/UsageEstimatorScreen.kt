@@ -42,7 +42,9 @@ import com.sailguard.app.ui.theme.AppSurface2
 import com.sailguard.app.ui.theme.CardBorder
 import com.sailguard.app.ui.theme.ErrorRed
 import com.sailguard.app.ui.theme.SuccessGreen
-import com.sailguard.app.ui.theme.TealPrimary
+import com.sailguard.app.ui.theme.NearBlack
+import com.sailguard.app.ui.theme.SailyYellow
+import com.sailguard.app.ui.theme.NearBlack
 import com.sailguard.app.ui.theme.TextPrimary
 import com.sailguard.app.ui.theme.TextSecondary
 import com.sailguard.app.ui.theme.WarningAmber
@@ -210,7 +212,7 @@ private fun UsageSliderRow(
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
                 Icon(icon, contentDescription = null,
-                     tint = TealPrimary, modifier = Modifier.size(20.dp))
+                     tint = NearBlack, modifier = Modifier.size(20.dp))
                 Column {
                     Text(label, style = MaterialTheme.typography.titleSmall, color = TextPrimary)
                     Text(subLabel, style = MaterialTheme.typography.labelSmall, color = TextSecondary)
@@ -220,7 +222,7 @@ private fun UsageSliderRow(
                 Text(
                     "${"%.1f".format(hours)} hrs/day",
                     style      = MaterialTheme.typography.bodySmall,
-                    color      = TealPrimary,
+                    color      = NearBlack,
                     fontWeight = FontWeight.SemiBold
                 )
                 Text(
@@ -234,8 +236,8 @@ private fun UsageSliderRow(
             value         = value,
             onValueChange = onChange,
             colors        = SliderDefaults.colors(
-                thumbColor         = TealPrimary,
-                activeTrackColor   = TealPrimary,
+                thumbColor         = SailyYellow,
+                activeTrackColor   = SailyYellow,
                 inactiveTrackColor = AppSurface2
             )
         )
