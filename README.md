@@ -205,3 +205,4 @@ This app was designed to solve real Saily user pain points identified from app s
 ## 👨‍💻 Built By
 
 **Trinayan Swarup** 
+Built with AI-assisted development (Claude Code) 
