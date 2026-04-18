@@ -6,7 +6,7 @@
 [![Android](https://img.shields.io/badge/Android-API%2026%2B-green?logo=android)](https://developer.android.com)
 [![Jetpack Compose](https://img.shields.io/badge/Jetpack%20Compose-Latest-blue)](https://developer.android.com/jetpack/compose)
 [![Architecture](https://img.shields.io/badge/Architecture-MVVM-orange)](https://developer.android.com/topic/architecture)
-[![License](https://img.shields.io/badge/License-MIT-lightgrey)](LICENSE)
+
 
 ---
 
@@ -204,9 +204,4 @@ This app was designed to solve real Saily user pain points identified from app s
 
 ## 👨‍💻 Built By
 
-**Trinayan Swarup** — Android Developer  
-Built as a Saily internship portfolio project · April 2026
-
----
-
-*SailGuard is an independent portfolio project and is not affiliated with or endorsed by Saily or NordVPN.*
+**Trinayan Swarup** 
