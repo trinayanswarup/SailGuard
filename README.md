@@ -1,6 +1,6 @@
 # ⛵ SailGuard
 
-> **A smart travel eSIM companion app built for Saily — helping travelers choose the right data plan, track real usage, and protect their battery and signal on the go.**
+> **A smart travel eSIM companion app built for helping travelers choose the right data plan, track real usage, and protect their battery and signal on the go.**
 
 [![Kotlin](https://img.shields.io/badge/Kotlin-2.0.21-purple?logo=kotlin)](https://kotlinlang.org)
 [![Android](https://img.shields.io/badge/Android-API%2026%2B-green?logo=android)](https://developer.android.com)
