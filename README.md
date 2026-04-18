@@ -20,7 +20,7 @@
 
 ## 🎯 Why I Built This
 
-Saily users frequently report two pain points: not knowing which data plan to buy before a trip, and running out of data mid-trip without warning. SailGuard solves both — before the trip with an AI-style plan recommendation engine, and during the trip with real-time device monitoring and smart alerts.
+Saily users frequently report two pain points: not knowing which data plan to buy before a trip, and running out of data mid-trip without warning. SailGuard solves both — before the trip with an plan recommendation engine, and during the trip with real-time device monitoring and smart alerts.
 
 This app was built as a portfolio project for the Saily internship application, demonstrating product thinking, native Android development, and real device API integration.
 
